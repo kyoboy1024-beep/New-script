@@ -1,0 +1,886 @@
+-- ===== モダンな認証システム =====
+local correctKey = "OMAENOMANNKONAMERUYO?"
+local authenticated = false
+
+-- モダンな認証GUI
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "AuthGUI"
+screenGui.Parent = game:GetService("CoreGui")
+screenGui.IgnoreGuiInset = true
+
+-- 背景オーバーレイ
+local overlay = Instance.new("Frame")
+overlay.Size = UDim2.new(1, 0, 1, 0)
+overlay.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+overlay.BackgroundTransparency = 0.5
+overlay.Parent = screenGui
+
+-- メインフレーム
+local frame = Instance.new("Frame")
+frame.Size = UDim2.new(0, 400, 0, 280)
+frame.Position = UDim2.new(0.5, -200, 0.5, -140)
+frame.BackgroundColor3 = Color3.fromRGB(20, 20, 30)
+frame.BorderSizePixel = 0
+frame.ClipsDescendants = true
+frame.Parent = screenGui
+
+-- 角丸
+local corner = Instance.new("UICorner")
+corner.CornerRadius = UDim.new(0, 16)
+corner.Parent = frame
+
+-- グラデーション上部バー
+local gradientBar = Instance.new("Frame")
+gradientBar.Size = UDim2.new(1, 0, 0, 60)
+gradientBar.Position = UDim2.new(0, 0, 0, 0)
+gradientBar.BackgroundColor3 = Color3.fromRGB(30, 30, 50)
+gradientBar.BorderSizePixel = 0
+gradientBar.Parent = frame
+
+local gradientCorner = Instance.new("UICorner")
+gradientCorner.CornerRadius = UDim.new(0, 16)
+gradientCorner.Parent = gradientBar
+
+-- ロックアイコン
+local icon = Instance.new("ImageLabel")
+icon.Size = UDim2.new(0, 40, 0, 40)
+icon.Position = UDim2.new(0.5, -20, 0, 10)
+icon.Image = "rbxassetid://6031098378"
+icon.BackgroundTransparency = 1
+icon.Parent = gradientBar
+
+-- タイトル
+local title = Instance.new("TextLabel")
+title.Size = UDim2.new(1, 0, 0, 30)
+title.Position = UDim2.new(0, 0, 0, 55)
+title.BackgroundTransparency = 1
+title.Text = "🔑キー認証システム🗝️"
+title.TextColor3 = Color3.fromRGB(255, 255, 255)
+title.Font = Enum.Font.GothamBold
+title.TextSize = 20
+title.TextXAlignment = Enum.TextXAlignment.Center
+title.Parent = frame
+
+-- サブタイトル
+local subtitle = Instance.new("TextLabel")
+subtitle.Size = UDim2.new(1, 0, 0, 20)
+subtitle.Position = UDim2.new(0, 0, 0, 85)
+subtitle.BackgroundTransparency = 1
+subtitle.Text = "キーはスクリプト作者から直接貰ってね"
+subtitle.TextColor3 = Color3.fromRGB(150, 150, 170)
+subtitle.Font = Enum.Font.Gotham
+subtitle.TextSize = 12
+subtitle.TextXAlignment = Enum.TextXAlignment.Center
+subtitle.Parent = frame
+
+-- 入力ボックス
+local inputBox = Instance.new("TextBox")
+inputBox.Size = UDim2.new(0.7, 0, 0, 45)
+inputBox.Position = UDim2.new(0.15, 0, 0.45, 0)
+inputBox.BackgroundColor3 = Color3.fromRGB(30, 30, 45)
+inputBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+inputBox.PlaceholderText = "ここにキーを入力"
+inputBox.PlaceholderColor3 = Color3.fromRGB(100, 100, 120)
+inputBox.Font = Enum.Font.Gotham
+inputBox.TextSize = 14
+inputBox.TextXAlignment = Enum.TextXAlignment.Center
+inputBox.ClearTextOnFocus = false
+inputBox.Parent = frame
+
+local inputCorner = Instance.new("UICorner")
+inputCorner.CornerRadius = UDim.new(0, 8)
+inputCorner.Parent = inputBox
+
+-- 認証ボタン
+local button = Instance.new("TextButton")
+button.Size = UDim2.new(0.4, 0, 0, 45)
+button.Position = UDim2.new(0.3, 0, 0.65, 0)
+button.BackgroundColor3 = Color3.fromRGB(0, 120, 215)
+button.Text = "認証"
+button.TextColor3 = Color3.fromRGB(255, 255, 255)
+button.Font = Enum.Font.GothamBold
+button.TextSize = 16
+button.Parent = frame
+
+local buttonCorner = Instance.new("UICorner")
+buttonCorner.CornerRadius = UDim.new(0, 8)
+buttonCorner.Parent = button
+
+-- ステータスラベル
+local statusLabel = Instance.new("TextLabel")
+statusLabel.Size = UDim2.new(1, 0, 0, 30)
+statusLabel.Position = UDim2.new(0, 0, 0.85, 0)
+statusLabel.BackgroundTransparency = 1
+statusLabel.Text = ""
+statusLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
+statusLabel.Font = Enum.Font.Gotham
+statusLabel.TextSize = 12
+statusLabel.Parent = frame
+
+-- アニメーション（フェードイン）
+frame.BackgroundTransparency = 1
+frame:TweenSize(UDim2.new(0, 420, 0, 300), "Out", "Back", 0.4)
+frame.BackgroundTransparency = 0
+
+-- ホバーエフェクト
+button.MouseEnter:Connect(function()
+    button:TweenSize(UDim2.new(0.42, 0, 0, 48), "Out", "Quad", 0.15)
+    button.BackgroundColor3 = Color3.fromRGB(0, 140, 235)
+end)
+
+button.MouseLeave:Connect(function()
+    button:TweenSize(UDim2.new(0.4, 0, 0, 45), "Out", "Quad", 0.15)
+    button.BackgroundColor3 = Color3.fromRGB(0, 120, 215)
+end)
+
+-- 入力ボックスフォーカスエフェクト
+inputBox.Focused:Connect(function()
+    inputBox.BackgroundColor3 = Color3.fromRGB(35, 35, 55)
+end)
+
+inputBox.FocusLost:Connect(function()
+    inputBox.BackgroundColor3 = Color3.fromRGB(30, 30, 45)
+end)
+
+-- 認証処理
+button.MouseButton1Click:Connect(function()
+    if inputBox.Text == correctKey then
+        statusLabel.Text = "✅認証が成功しました！メインスクリプトをロード中…"
+        statusLabel.TextColor3 = Color3.fromRGB(100, 255, 100)
+        
+        -- 成功アニメーション
+        button:TweenSize(UDim2.new(0.4, 0, 0, 45), "Out", "Quad", 0.2)
+        button.BackgroundColor3 = Color3.fromRGB(0, 200, 100)
+        
+        task.wait(0.5)
+        screenGui:Destroy()
+        task.wait(0.3)
+        LoadMainScript()
+    else
+        statusLabel.Text = "❌キーが違います"
+        statusLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
+        
+        -- シェイクエフェクト
+        local originalPos = frame.Position
+        for i = 1, 3 do
+            frame.Position = UDim2.new(0.5, -205, 0.5, -140)
+            task.wait(0.03)
+            frame.Position = UDim2.new(0.5, -195, 0.5, -140)
+            task.wait(0.03)
+        end
+        frame.Position = originalPos
+        
+        inputBox.Text = ""
+        
+        -- エラー時ボタン点滅
+        button.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+        task.wait(0.2)
+        button.BackgroundColor3 = Color3.fromRGB(0, 120, 215)
+    end
+end)
+
+-- ===== メインスクリプト（認証後に実行） =====
+function LoadMainScript()
+    local OrionLib = loadstring(game:HttpGet("https://raw.githubusercontent.com/jadpy/suki/refs/heads/main/orion"))()
+    local Players = game:GetService("Players")
+    local ReplicatedStorage = game:GetService("ReplicatedStorage")
+    local Debris = game:GetService("Debris")
+    local UserInputService = game:GetService("UserInputService")
+    local Workspace = game:GetService("Workspace")
+    local Lighting = game:GetService("Lighting")
+    local RunService = game:GetService("RunService")
+
+    local GrabEvents = ReplicatedStorage:WaitForChild("GrabEvents")
+    local SetNetworkOwner = GrabEvents:WaitForChild("SetNetworkOwner")
+
+    local me = game.Players.LocalPlayer
+    local Window = OrionLib:MakeWindow({
+        Name = "by kyo_555 改造済み FTAP ToyMod",
+        HidePremium = false,
+        SaveConfig = true,
+        ConfigFolder = "MasterHub",
+        IntroEnabled = true,
+        IntroText = "I use DeepSeek AI",
+        IntroIcon = "4483345998",
+        Icon = "",
+        KeyToOpenWindow = "K",
+        FreeMouse = true
+    })
+
+    -- ===== サーマルビジョン機能 =====
+    local thermalEnabled = false
+    local thermalConnection = nil
+    local playerHighlights = {}
+    local originalSettings = {}
+
+    local function setThermalLighting()
+        originalSettings.Brightness = Lighting.Brightness
+        originalSettings.Ambient = Lighting.Ambient
+        originalSettings.ColorShift_Top = Lighting.ColorShift_Top
+        originalSettings.ColorShift_Bottom = Lighting.ColorShift_Bottom
+        originalSettings.OutdoorAmbient = Lighting.OutdoorAmbient
+        originalSettings.FogColor = Lighting.FogColor
+        originalSettings.GlobalShadows = Lighting.GlobalShadows
+        
+        Lighting.Brightness = 0.3
+        Lighting.Ambient = Color3.fromRGB(30, 15, 50)
+        Lighting.ColorShift_Top = Color3.fromRGB(80, 40, 100)
+        Lighting.ColorShift_Bottom = Color3.fromRGB(100, 50, 80)
+        Lighting.OutdoorAmbient = Color3.fromRGB(25, 12, 45)
+        Lighting.FogColor = Color3.fromRGB(40, 20, 60)
+        Lighting.GlobalShadows = false
+    end
+
+    local function resetLighting()
+        if originalSettings.Brightness then Lighting.Brightness = originalSettings.Brightness end
+        if originalSettings.Ambient then Lighting.Ambient = originalSettings.Ambient end
+        if originalSettings.ColorShift_Top then Lighting.ColorShift_Top = originalSettings.ColorShift_Top end
+        if originalSettings.ColorShift_Bottom then Lighting.ColorShift_Bottom = originalSettings.ColorShift_Bottom end
+        if originalSettings.OutdoorAmbient then Lighting.OutdoorAmbient = originalSettings.OutdoorAmbient end
+        if originalSettings.FogColor then Lighting.FogColor = originalSettings.FogColor end
+        if originalSettings.GlobalShadows ~= nil then Lighting.GlobalShadows = originalSettings.GlobalShadows end
+    end
+
+    local function addPlayerHighlight(player)
+        if not player.Character then return end
+        
+        local highlight = Instance.new("Highlight")
+        highlight.Name = "ThermalHighlight"
+        highlight.FillColor = Color3.fromRGB(255, 140, 50)
+        highlight.OutlineColor = Color3.fromRGB(255, 200, 100)
+        highlight.FillTransparency = 0.3
+        highlight.OutlineTransparency = 0.1
+        highlight.Parent = player.Character
+        playerHighlights[player] = highlight
+    end
+
+    local function removePlayerHighlight(player)
+        if playerHighlights[player] then
+            pcall(function() playerHighlights[player]:Destroy() end)
+            playerHighlights[player] = nil
+        end
+    end
+
+    local function updateAllPlayerHighlights()
+        for _, player in ipairs(Players:GetPlayers()) do
+            if player ~= me then
+                if player.Character then
+                    if not playerHighlights[player] then
+                        addPlayerHighlight(player)
+                    end
+                else
+                    removePlayerHighlight(player)
+                end
+            end
+        end
+    end
+
+    local function clearAllHighlights()
+        for _, highlight in pairs(playerHighlights) do
+            pcall(function() highlight:Destroy() end)
+        end
+        playerHighlights = {}
+    end
+
+    local function enableThermal()
+        if thermalEnabled then return end
+        thermalEnabled = true
+        
+        setThermalLighting()
+        updateAllPlayerHighlights()
+        
+        thermalConnection = RunService.Heartbeat:Connect(function()
+            if not thermalEnabled then return end
+            if tick() % 2 < 0.033 then
+                updateAllPlayerHighlights()
+            end
+        end)
+        
+        Players.PlayerAdded:Connect(function(player)
+            if thermalEnabled and player ~= me then
+                player.CharacterAdded:Connect(function()
+                    task.wait(0.5)
+                    if thermalEnabled then
+                        addPlayerHighlight(player)
+                    end
+                end)
+                if player.Character then
+                    task.wait(0.5)
+                    if thermalEnabled then
+                        addPlayerHighlight(player)
+                    end
+                end
+            end
+        end)
+        
+        for _, player in ipairs(Players:GetPlayers()) do
+            if player ~= me then
+                player.CharacterAdded:Connect(function()
+                    task.wait(0.5)
+                    if thermalEnabled then
+                        addPlayerHighlight(player)
+                    end
+                end)
+            end
+        end
+    end
+
+    local function disableThermal()
+        if not thermalEnabled then return end
+        thermalEnabled = false
+        
+        if thermalConnection then
+            thermalConnection:Disconnect()
+            thermalConnection = nil
+        end
+        
+        clearAllHighlights()
+        resetLighting()
+    end
+    -- ===== サーマルビジョン機能ここまで =====
+
+    local originalCollides={}
+    local activeToys ={}
+    local selectedTarget
+    local target="meobject"
+    local bombMissileStartTime = nil
+    local originalCameraSubject = nil
+    local originalCameraType = nil
+    local keysDown = {}
+
+    local ICBMSettings = {
+        AscendSpeed = 1,
+        AscendTime = 1,
+        FlySpeed = 2,
+        AutoReload = false
+    }
+
+    UserInputService.InputBegan:Connect(function(input, gpe)
+        if gpe then return end
+        keysDown[input.KeyCode] = true
+    end)
+
+    UserInputService.InputEnded:Connect(function(input, gpe)
+        keysDown[input.KeyCode] = false
+    end)
+
+    local toys2 = {
+        missileRotationOffset = -135,
+        mod = nil,
+        isMoving = false
+    }
+    local toys = setmetatable({}, {
+        __index = function(_, k) return toys2[k] end,
+        __newindex = function(_, k, v) toys2[k] = v end
+    })
+
+    local ToyModTab = Window:MakeTab({
+        Name = "ToyMod",
+        Icon = "rbxassetid://125543663906813",
+        PremiumOnly = false
+    })
+
+    local ThermalTab = Window:MakeTab({
+        Name = "Thermal Vision",
+        Icon = "rbxassetid://4483345998",
+        PremiumOnly = false
+    })
+
+    ThermalTab:AddSection({
+        Name = "Thermal Vision Settings"
+    })
+
+    ThermalTab:AddToggle({
+        Name = "Thermal Vision (サーモグラフィ)",
+        Default = false,
+        Save = true,
+        Callback = function(state)
+            if state then
+                enableThermal()
+                OrionLib:MakeNotification({
+                    Name = "Thermal Vision",
+                    Content = "サーモグラフィモードを有効にしました",
+                    Time = 2
+                })
+            else
+                disableThermal()
+                OrionLib:MakeNotification({
+                    Name = "Thermal Vision",
+                    Content = "サーモグラフィモードを無効にしました",
+                    Time = 2
+                })
+            end
+        end
+    })
+
+    ThermalTab:AddParagraph(
+        "説明",
+        "・ONにするとサーモグラフィ風の視覚効果が適用されます\n" ..
+        "・プレイヤー: オレンジ色でハイライト\n" ..
+        "・背景: 暗めの紫色のライティング\n" ..
+        "・軽量化済みで遠くのプレイヤーも認識可能\n" ..
+        "・OFFにすると元の状態に戻ります"
+    )
+
+    local function createBodyMovers(part)
+        local bp = part:FindFirstChild("BP") or Instance.new("BodyPosition")
+        bp.Name = "BP"
+        bp.P = 20000
+        bp.D = 200
+        bp.MaxForce = Vector3.new(5e6, 5e6, 5e6)
+        bp.Position = part.Position
+        bp.Parent = part
+
+        local bg = part:FindFirstChild("BG") or Instance.new("BodyGyro")
+        bg.Name = "BG"
+        bg.P = 20000
+        bg.D = 200
+        bg.MaxTorque = Vector3.new(5e6, 5e6, 5e6)
+        bg.CFrame = part.CFrame
+        bg.Parent = part
+
+        part.Anchored = false
+    end
+
+    local function enableCollision(model)
+        for _, p in pairs(model:GetDescendants()) do
+            if p:IsA("BasePart") then
+                if originalCollides[p] == nil then
+                    originalCollides[p] = p.CanCollide
+                end
+                p.CanCollide = originalCollides[p]
+            end
+        end
+    end
+
+    local function collectModelsInFolder(folder)
+        for _, toy in ipairs(folder:GetDescendants()) do
+            if toy:IsA("Model") then
+                local part = toy:FindFirstChildWhichIsA("BasePart")
+                if part and not activeToys[toy] then
+                    activeToys[toy] = {
+                        part = part,
+                        index = math.random(1, 1000)
+                    }
+                    enableCollision(toy)
+                    createBodyMovers(part)
+                end
+            end
+        end
+    end
+
+    local function addToysToAura(target)
+        if target == "meobject" then
+            local meFolder = workspace:FindFirstChild(me.Name .. "SpawnedInToys")
+            if meFolder then
+                collectModelsInFolder(meFolder)
+            end
+
+            local plr = Players.LocalPlayer
+            local folders = {}
+
+            local plotsFolder = workspace:FindFirstChild("Plots")
+            if plotsFolder then
+                for i = 1, 5 do
+                    local plot = plotsFolder:FindFirstChild("Plot" .. i)
+                    if plot then
+                        local ownersFolder = plot:FindFirstChild("PlotSign") and plot.PlotSign:FindFirstChild("ThisPlotsOwners")
+                        if ownersFolder then
+                            for _, v in ipairs(ownersFolder:GetChildren()) do
+                                if v:IsA("ValueBase") and v.Value == plr.Name then
+                                    local plotItemsFolder = workspace:FindFirstChild("PlotItems")
+                                    if plotItemsFolder and plotItemsFolder:FindFirstChild(plot.Name) then
+                                        table.insert(folders, plotItemsFolder:FindFirstChild(plot.Name))
+                                    end
+                                end
+                            end
+                        end
+                    end
+                end
+            end
+
+            for _, folder in ipairs(folders) do
+                collectModelsInFolder(folder)
+            end
+
+        elseif target == "allobject" then
+            for _, player in ipairs(Players:GetPlayers()) do
+                local playerFolder = workspace:FindFirstChild(player.Name .. "SpawnedInToys")
+                if playerFolder then
+                    collectModelsInFolder(playerFolder)
+                end
+            end
+            local foldersToCheck = {
+                "Balloons", "Cave", "Cubes", "Draawers", "Farm", "Food", "Furniture",
+                "Glass Boxes", "Ladders", "Large Animals", "Music", "NOT New",
+                "Other", "Pallets", "Robloxians", "Rollers"
+            }
+            for _, folderName in ipairs(foldersToCheck) do
+                local folder = workspace:FindFirstChild(folderName)
+                if folder then
+                    collectModelsInFolder(folder)
+                end
+            end
+            local pl = workspace:FindFirstChild("PlotItems")
+            if pl then
+                for i = 1, 5 do
+                    local folderplot = pl:FindFirstChild("Plot" .. i)
+                    if folderplot then
+                        collectModelsInFolder(folderplot)
+                    end
+                end
+            end
+        end
+    end
+
+    function clearEffects()
+        for toy, _ in pairs(activeToys) do
+            for _, child in ipairs(toy:GetDescendants()) do
+                if child:IsA("BodyMover") or child:IsA("BodyGyro") then
+                    child:Destroy()
+                end
+            end
+            enableCollision(toy)
+        end
+        activeToys = {}
+    end
+
+    local function spawnMissileAtPlayer()
+        local hrp = me.Character and me.Character:FindFirstChild("HumanoidRootPart")
+        if not hrp then return false end
+        
+        local charCF = hrp.CFrame
+        local forwardDirection = charCF.LookVector
+        local spawnPos = hrp.Position + forwardDirection * 1 + Vector3.new(0, 2, 0)
+        local spawnCF = CFrame.new(spawnPos, spawnPos + forwardDirection)
+        
+        local success, missile = pcall(function()
+            return ReplicatedStorage.MenuToys.SpawnToyRemoteFunction:InvokeServer(
+                "BombMissile",
+                spawnCF,
+                Vector3.zero
+            )
+        end)
+        
+        if success and missile then
+            local part = missile:FindFirstChildWhichIsA("BasePart")
+            if part then
+                activeToys[missile] = {
+                    part = part,
+                    index = math.random(1, 1000)
+                }
+                enableCollision(missile)
+                createBodyMovers(part)
+            end
+            return true
+        end
+        return false
+    end
+
+    local autoReloadLoop = nil
+    local autoReloadRunning = false
+
+    local function startAutoReload()
+        if autoReloadLoop then return end
+        autoReloadRunning = true
+        
+        autoReloadLoop = task.spawn(function()
+            while autoReloadRunning and ICBMSettings.AutoReload and toys.mod == "BombMissile" and toys.isMoving do
+                local hasMissile = false
+                for toy, _ in pairs(activeToys) do
+                    if toy and toy.Name == "BombMissile" and toy.Parent then
+                        hasMissile = true
+                        break
+                    end
+                end
+                
+                if not hasMissile then
+                    task.wait(0.3)
+                    local success = spawnMissileAtPlayer()
+                    if success then
+                        bombMissileStartTime = nil
+                    end
+                end
+                
+                task.wait(0.3)
+            end
+            autoReloadLoop = nil
+        end)
+    end
+
+    local function stopAutoReload()
+        autoReloadRunning = false
+        if autoReloadLoop then
+            task.cancel(autoReloadLoop)
+            autoReloadLoop = nil
+        end
+    end
+
+    local function bombMissileEffect()
+        local plr = Players.LocalPlayer
+        local camera = workspace.CurrentCamera
+        
+        local missile = nil
+        for toy, data in pairs(activeToys) do
+            if toy.Name == "BombMissile" then
+                missile = toy
+                break
+            end
+        end
+        
+        if not missile then
+            if originalCameraSubject then
+                camera.CameraSubject = originalCameraSubject
+                camera.CameraType = originalCameraType
+                originalCameraSubject = nil
+                bombMissileStartTime = nil
+            end
+            return
+        end
+        
+        local part = missile:FindFirstChildWhichIsA("BasePart")
+        if not part or not part:FindFirstChild("BP") or not part:FindFirstChild("BG") then return end
+        
+        if not bombMissileStartTime then
+            bombMissileStartTime = os.clock()
+            originalCameraSubject = camera.CameraSubject
+            originalCameraType = camera.CameraType
+            camera.CameraSubject = part
+        end
+        
+        local elapsed = os.clock() - bombMissileStartTime
+
+        if elapsed < ICBMSettings.AscendTime then
+            part.BP.Position = part.Position + Vector3.new(0, ICBMSettings.AscendSpeed, 0)
+        else
+            part.BP.Position = part.Position + camera.CFrame.LookVector * ICBMSettings.FlySpeed
+            part.BG.CFrame = camera.CFrame * CFrame.Angles(math.rad(toys.missileRotationOffset), 0, 0)
+        end
+    end
+
+    local function helicopterEffect()
+        local plr = Players.LocalPlayer
+        local camera = workspace.CurrentCamera
+        local heli = nil
+        for toy, data in pairs(activeToys) do
+            if toy.Name == "FlyingToyHelicopter" then
+                heli = toy
+                break
+            end
+        end
+
+        if not heli then
+            if originalCameraSubject then
+                camera.CameraSubject = originalCameraSubject
+                camera.CameraType = originalCameraType
+                originalCameraSubject = nil
+                if plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") then
+                    plr.Character.HumanoidRootPart.Anchored = false
+                end
+            end
+            return
+        end
+
+        local part = heli:FindFirstChildWhichIsA("BasePart")
+        if not part or not part:FindFirstChild("BP") or not part:FindFirstChild("BG") then return end
+
+        if not originalCameraSubject then
+            originalCameraSubject = camera.CameraSubject
+            originalCameraType = camera.CameraType
+            local cameraTarget = heli:FindFirstChild("Body") or part
+            camera.CameraSubject = cameraTarget
+            if plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") then
+                plr.Character.HumanoidRootPart.Anchored = true
+            end
+        end
+
+        local moveSpeed = 0.3
+        local rotateSpeed = 1.5
+        local verticalSpeed = 0.3
+
+        local moveDir = Vector3.new(0, 0, 0)
+        local rotationChange = 0
+
+        if keysDown[Enum.KeyCode.W] then
+            moveDir = moveDir - part.CFrame.LookVector * moveSpeed
+        end
+        if keysDown[Enum.KeyCode.S] then
+            moveDir = moveDir + part.CFrame.LookVector * moveSpeed
+        end
+        if keysDown[Enum.KeyCode.A] then
+            rotationChange = rotationChange + rotateSpeed
+        end
+        if keysDown[Enum.KeyCode.D] then
+            rotationChange = rotationChange - rotateSpeed
+        end
+        if keysDown[Enum.KeyCode.Z] then
+            moveDir = moveDir + Vector3.new(0, verticalSpeed, 0)
+        end
+        if keysDown[Enum.KeyCode.X] then
+            moveDir = moveDir - Vector3.new(0, verticalSpeed, 0)
+        end
+
+        if moveDir.Magnitude > 0 then
+            part.BP.Position = part.Position + moveDir
+        end
+
+        if rotationChange ~= 0 then
+            local x, y, z = part.BG.CFrame:ToEulerAnglesYXZ()
+            part.BG.CFrame = CFrame.fromEulerAnglesYXZ(x, y + math.rad(rotationChange), z)
+        end
+    end
+
+    local function combinedEffect()
+        if toys.mod == "BombMissile" then
+            bombMissileEffect()
+        elseif toys.mod == "Helicopter" then
+            helicopterEffect()
+        end
+    end
+
+    function toggleEffect()
+        if toys.isMoving then
+            addToysToAura(selectedTarget)
+
+            if effectCoroutine then
+                coroutine.close(effectCoroutine)
+            end
+
+            effectCoroutine = coroutine.create(function()
+                while toys.isMoving do
+                    combinedEffect()
+                    task.wait()
+                end
+            end)
+            coroutine.resume(effectCoroutine)
+            
+            if ICBMSettings.AutoReload then
+                startAutoReload()
+            end
+        else
+            if effectCoroutine then
+                coroutine.close(effectCoroutine)
+                effectCoroutine = nil
+            end
+            stopAutoReload()
+            clearEffects()
+            
+            if originalCameraSubject then
+                local camera = workspace.CurrentCamera
+                camera.CameraSubject = originalCameraSubject
+                camera.CameraType = originalCameraType
+                originalCameraSubject = nil
+                bombMissileStartTime = nil
+                
+                local plr = Players.LocalPlayer
+                if plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") then
+                    plr.Character.HumanoidRootPart.Anchored = false
+                end
+            end
+        end
+    end
+
+    -- ===== ICBM設定セクション =====
+    ToyModTab:AddSection({
+        Name = "ICBM Settings"
+    })
+
+    ToyModTab:AddSlider({
+        Name = "Ascend Speed",
+        Min = 0.5,
+        Max = 10,
+        Default = 1,
+        Increment = 0.5,
+        Callback = function(value)
+            ICBMSettings.AscendSpeed = value
+        end
+    })
+
+    ToyModTab:AddSlider({
+        Name = "Ascend Time (seconds)",
+        Min = 0.5,
+        Max = 10,
+        Default = 1,
+        Increment = 0.5,
+        Callback = function(value)
+            ICBMSettings.AscendTime = value
+        end
+    })
+
+    ToyModTab:AddSlider({
+        Name = "Fly Speed",
+        Min = 1,
+        Max = 20,
+        Default = 2,
+        Increment = 1,
+        Callback = function(value)
+            ICBMSettings.FlySpeed = value
+        end
+    })
+
+    ToyModTab:AddToggle({
+        Name = "Auto Reload (自動補充)",
+        Default = false,
+        Save = true,
+        Callback = function(state)
+            ICBMSettings.AutoReload = state
+            if toys.isMoving and toys.mod == "BombMissile" then
+                if state then
+                    startAutoReload()
+                else
+                    stopAutoReload()
+                end
+            end
+        end
+    })
+
+    ToyModTab:AddToggle({
+        Name = "ICBM",
+        Default = false,
+        Save = true,
+        Callback = function(state)
+            toys.isMoving = state
+            toys.mod = state and "BombMissile" or nil
+            toggleEffect()
+        end
+    })
+
+    ToyModTab:AddToggle({
+        Name = "Third Person",
+        Default = false,
+        Callback = function(state)
+            if state then
+                me.CameraMode = Enum.CameraMode.Classic
+                me.CameraMaxZoomDistance = 100
+                me.CameraMinZoomDistance = 0.5
+            else
+                me.CameraMode = Enum.CameraMode.LockFirstPerson
+                me.CameraMaxZoomDistance = 0.5
+                me.CameraMinZoomDistance = 0.5
+            end
+        end    
+    })
+
+    ToyModTab:AddToggle({
+        Name = "Helicopter Control",
+        Default = false,
+        Save = true,
+        Callback = function(state)
+            toys.isMoving = state
+            toys.mod = state and "Helicopter" or nil
+            toggleEffect()
+        end
+    })
+
+    ToyModTab:AddDropdown({
+        Name = "Toy Mode",
+        Default = target,
+        Options = {"meobject"},
+        Callback = function(sel)
+            selectedTarget = sel
+            addToysToAura(selectedTarget)
+        end
+    })
+
+    OrionLib:Init()
+end
