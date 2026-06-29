@@ -1,1 +1,783 @@
+-- ★★★ Kyo UI Library v1.0 ★★★
+-- かっこいいカスタムUIライブラリ
 
+local KyoUI = {}
+KyoUI.__index = KyoUI
+
+-- ============================================
+-- サービス
+-- ============================================
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
+local LP = Players.LocalPlayer
+
+-- ============================================
+-- 色設定
+-- ============================================
+local Colors = {
+    Main = Color3.fromRGB(18, 18, 28),
+    Second = Color3.fromRGB(28, 28, 42),
+    Third = Color3.fromRGB(38, 38, 56),
+    Accent = Color3.fromRGB(0, 170, 255),
+    Accent2 = Color3.fromRGB(100, 200, 255),
+    Text = Color3.fromRGB(255, 255, 255),
+    TextDark = Color3.fromRGB(180, 180, 200),
+    Green = Color3.fromRGB(0, 255, 100),
+    Red = Color3.fromRGB(255, 50, 50),
+    Orange = Color3.fromRGB(255, 165, 0),
+    Purple = Color3.fromRGB(150, 50, 255),
+}
+
+-- ============================================
+-- ユーティリティ
+-- ============================================
+local function CreateCorner(instance, radius)
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, radius or 8)
+    corner.Parent = instance
+    return corner
+end
+
+local function CreateStroke(instance, color, thickness)
+    local stroke = Instance.new("UIStroke")
+    stroke.Color = color or Color3.fromRGB(60, 60, 80)
+    stroke.Thickness = thickness or 1
+    stroke.Parent = instance
+    return stroke
+end
+
+local function Tween(instance, properties, duration, style)
+    style = style or Enum.EasingStyle.Quad
+    local tween = TweenService:Create(instance, TweenInfo.new(duration or 0.3, style, Enum.EasingDirection.Out), properties)
+    tween:Play()
+    return tween
+end
+
+-- ============================================
+-- メインクラス
+-- ============================================
+
+function KyoUI:CreateWindow(config)
+    config = config or {}
+    
+    local self = setmetatable({}, KyoUI)
+    self.Name = config.Name or "Kyo UI"
+    self.Theme = config.Theme or {}
+    
+    -- スクリーンGUI作成
+    self.ScreenGui = Instance.new("ScreenGui")
+    self.ScreenGui.Name = "KyoUI"
+    self.ScreenGui.ResetOnSpawn = false
+    self.ScreenGui.Parent = LP:WaitForChild("PlayerGui")
+    
+    -- メインフレーム
+    self.Main = Instance.new("Frame")
+    self.Main.Parent = self.ScreenGui
+    self.Main.Size = UDim2.new(0, 500, 0, 600)
+    self.Main.Position = UDim2.new(0.5, -250, 0.5, -300)
+    self.Main.BackgroundColor3 = Colors.Main
+    self.Main.BackgroundTransparency = 0.05
+    self.Main.BorderSizePixel = 0
+    self.Main.Active = true
+    self.Main.Draggable = true
+    CreateCorner(self.Main, 12)
+    CreateStroke(self.Main, Colors.Accent, 2)
+    
+    -- 背景の輝き効果
+    self.Glow = Instance.new("Frame")
+    self.Glow.Parent = self.Main
+    self.Glow.Size = UDim2.new(1, 20, 1, 20)
+    self.Glow.Position = UDim2.new(0, -10, 0, -10)
+    self.Glow.BackgroundColor3 = Colors.Accent
+    self.Glow.BackgroundTransparency = 0.95
+    self.Glow.BorderSizePixel = 0
+    CreateCorner(self.Glow, 16)
+    
+    -- タイトルバー
+    self.TitleBar = Instance.new("Frame")
+    self.TitleBar.Parent = self.Main
+    self.TitleBar.Size = UDim2.new(1, 0, 0, 45)
+    self.TitleBar.BackgroundColor3 = Colors.Second
+    self.TitleBar.BackgroundTransparency = 0
+    self.TitleBar.BorderSizePixel = 0
+    CreateCorner(self.TitleBar, 12)
+    
+    -- タイトルテキスト
+    self.TitleText = Instance.new("TextLabel")
+    self.TitleText.Parent = self.TitleBar
+    self.TitleText.Size = UDim2.new(0.8, 0, 1, 0)
+    self.TitleText.Position = UDim2.new(0.05, 0, 0, 0)
+    self.TitleText.BackgroundTransparency = 1
+    self.TitleText.Text = " " .. self.Name
+    self.TitleText.TextColor3 = Colors.Text
+    self.TitleText.TextScaled = true
+    self.TitleText.Font = Enum.Font.GothamBold
+    self.TitleText.TextXAlignment = Enum.TextXAlignment.Left
+    
+    -- ロゴ表示
+    self.Logo = Instance.new("ImageLabel")
+    self.Logo.Parent = self.TitleBar
+    self.Logo.Size = UDim2.new(0, 25, 0, 25)
+    self.Logo.Position = UDim2.new(0.92, 0, 0.5, -12.5)
+    self.Logo.BackgroundTransparency = 1
+    self.Logo.Image = "rbxassetid://7733916988"
+    
+    -- 閉じるボタン
+    self.CloseBtn = Instance.new("TextButton")
+    self.CloseBtn.Parent = self.TitleBar
+    self.CloseBtn.Size = UDim2.new(0, 30, 0, 30)
+    self.CloseBtn.Position = UDim2.new(1, -38, 0, 7)
+    self.CloseBtn.BackgroundColor3 = Colors.Red
+    self.CloseBtn.BackgroundTransparency = 0.8
+    self.CloseBtn.Text = "✕"
+    self.CloseBtn.TextColor3 = Colors.Text
+    self.CloseBtn.TextScaled = true
+    self.CloseBtn.Font = Enum.Font.GothamBold
+    self.CloseBtn.BorderSizePixel = 0
+    CreateCorner(self.CloseBtn, 6)
+    
+    self.CloseBtn.MouseButton1Click:Connect(function()
+        self:Destroy()
+    end)
+    
+    -- タブコンテナ
+    self.TabContainer = Instance.new("Frame")
+    self.TabContainer.Parent = self.Main
+    self.TabContainer.Size = UDim2.new(1, 0, 0, 40)
+    self.TabContainer.Position = UDim2.new(0, 0, 0, 45)
+    self.TabContainer.BackgroundColor3 = Colors.Second
+    self.TabContainer.BackgroundTransparency = 0
+    self.TabContainer.BorderSizePixel = 0
+    
+    -- タブリスト（スクロール）
+    self.TabList = Instance.new("ScrollingFrame")
+    self.TabList.Parent = self.TabContainer
+    self.TabList.Size = UDim2.new(1, -10, 1, 0)
+    self.TabList.Position = UDim2.new(0, 5, 0, 0)
+    self.TabList.BackgroundTransparency = 1
+    self.TabList.ScrollBarThickness = 3
+    self.TabList.ScrollBarImageColor3 = Colors.Accent
+    self.TabList.CanvasSize = UDim2.new(0, 0, 0, 0)
+    self.TabList.AutomaticCanvasSize = Enum.AutomaticSize.X
+    
+    local TabLayout = Instance.new("UIListLayout")
+    TabLayout.Parent = self.TabList
+    TabLayout.FillDirection = Enum.FillDirection.Horizontal
+    TabLayout.Padding = UDim.new(0, 5)
+    TabLayout.SortOrder = Enum.SortOrder.LayoutOrder
+    
+    -- メインコンテンツ
+    self.Content = Instance.new("Frame")
+    self.Content.Parent = self.Main
+    self.Content.Size = UDim2.new(1, -10, 1, -100)
+    self.Content.Position = UDim2.new(0, 5, 0, 88)
+    self.Content.BackgroundTransparency = 1
+    self.Content.ClipsDescendants = true
+    
+    -- コンテンツスクロール
+    self.Scroll = Instance.new("ScrollingFrame")
+    self.Scroll.Parent = self.Content
+    self.Scroll.Size = UDim2.new(1, 0, 1, 0)
+    self.Scroll.BackgroundTransparency = 1
+    self.Scroll.ScrollBarThickness = 5
+    self.Scroll.ScrollBarImageColor3 = Colors.Accent
+    self.Scroll.CanvasSize = UDim2.new(0, 0, 0, 0)
+    self.Scroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+    
+    self.ScrollLayout = Instance.new("UIListLayout")
+    self.ScrollLayout.Parent = self.Scroll
+    self.ScrollLayout.Padding = UDim.new(0, 8)
+    self.ScrollLayout.SortOrder = Enum.SortOrder.LayoutOrder
+    
+    -- データ保存
+    self.Tabs = {}
+    self.CurrentTab = nil
+    self.TabButtons = {}
+    
+    -- アニメーション
+    Tween(self.Main, {BackgroundTransparency = 0.1}, 0.5)
+    
+    return self
+end
+
+-- ============================================
+-- タブ作成
+-- ============================================
+
+function KyoUI:CreateTab(config)
+    local self = this or KyoUI
+    config = config or {}
+    
+    local tab = {
+        Name = config.Name or "Tab",
+        Icon = config.Icon or "rbxassetid://4483345998",
+        Elements = {},
+        Frame = nil,
+        Button = nil,
+    }
+    
+    -- タブボタン
+    local btn = Instance.new("TextButton")
+    btn.Parent = self.TabList
+    btn.Size = UDim2.new(0, 100, 1, -6)
+    btn.Position = UDim2.new(0, 0, 0, 3)
+    btn.BackgroundColor3 = Colors.Third
+    btn.BackgroundTransparency = 0
+    btn.Text = "  " .. config.Name
+    btn.TextColor3 = Colors.TextDark
+    btn.TextScaled = true
+    btn.Font = Enum.Font.GothamBold
+    btn.BorderSizePixel = 0
+    CreateCorner(btn, 6)
+    
+    -- アイコン
+    if config.Icon then
+        local icon = Instance.new("ImageLabel")
+        icon.Parent = btn
+        icon.Size = UDim2.new(0, 20, 0, 20)
+        icon.Position = UDim2.new(0, 5, 0.5, -10)
+        icon.BackgroundTransparency = 1
+        icon.Image = config.Icon
+    end
+    
+    tab.Button = btn
+    
+    -- タブコンテンツフレーム
+    local frame = Instance.new("Frame")
+    frame.Parent = self.Scroll
+    frame.Size = UDim2.new(1, 0, 0, 0)
+    frame.BackgroundTransparency = 1
+    frame.Visible = false
+    frame.AutomaticSize = Enum.AutomaticSize.Y
+    
+    local layout = Instance.new("UIListLayout")
+    layout.Parent = frame
+    layout.Padding = UDim.new(0, 8)
+    layout.SortOrder = Enum.SortOrder.LayoutOrder
+    
+    tab.Frame = frame
+    
+    -- タブ切り替え
+    btn.MouseButton1Click:Connect(function()
+        self:SelectTab(tab)
+    end)
+    
+    table.insert(self.Tabs, tab)
+    
+    -- 最初のタブを選択
+    if #self.Tabs == 1 then
+        self:SelectTab(tab)
+    end
+    
+    return tab
+end
+
+function KyoUI:SelectTab(tab)
+    local self = this or KyoUI
+    
+    -- 全てのタブを非表示
+    for _, t in ipairs(self.Tabs) do
+        t.Frame.Visible = false
+        t.Button.BackgroundColor3 = Colors.Third
+        t.Button.TextColor3 = Colors.TextDark
+    end
+    
+    -- 選択したタブを表示
+    tab.Frame.Visible = true
+    tab.Button.BackgroundColor3 = Colors.Accent
+    tab.Button.TextColor3 = Colors.Text
+    
+    self.CurrentTab = tab
+end
+
+-- ============================================
+-- UI要素作成関数
+-- ============================================
+
+-- セクション
+function KyoUI:CreateSection(parent, config)
+    config = config or {}
+    
+    local frame = Instance.new("Frame")
+    frame.Parent = parent
+    frame.Size = UDim2.new(1, 0, 0, 30)
+    frame.BackgroundTransparency = 1
+    
+    local label = Instance.new("TextLabel")
+    label.Parent = frame
+    label.Size = UDim2.new(1, 0, 1, 0)
+    label.BackgroundTransparency = 1
+    label.Text = "─── " .. config.Name .. " ───"
+    label.TextColor3 = Colors.Accent
+    label.TextScaled = true
+    label.Font = Enum.Font.GothamBold
+    
+    return frame
+end
+
+-- ボタン
+function KyoUI:CreateButton(parent, config)
+    config = config or {}
+    
+    local btn = Instance.new("TextButton")
+    btn.Parent = parent
+    btn.Size = UDim2.new(1, 0, 0, 40)
+    btn.BackgroundColor3 = config.Color or Colors.Third
+    btn.BackgroundTransparency = 0
+    btn.Text = "  " .. (config.Name or "Button")
+    btn.TextColor3 = Colors.Text
+    btn.TextScaled = true
+    btn.Font = Enum.Font.GothamBold
+    btn.TextXAlignment = Enum.TextXAlignment.Left
+    btn.BorderSizePixel = 0
+    CreateCorner(btn, 8)
+    
+    -- ホバーエフェクト
+    btn.MouseEnter:Connect(function()
+        Tween(btn, {BackgroundColor3 = Colors.Accent}, 0.2)
+    end)
+    btn.MouseLeave:Connect(function()
+        Tween(btn, {BackgroundColor3 = config.Color or Colors.Third}, 0.2)
+    end)
+    
+    if config.Icon then
+        local icon = Instance.new("ImageLabel")
+        icon.Parent = btn
+        icon.Size = UDim2.new(0, 24, 0, 24)
+        icon.Position = UDim2.new(0, 10, 0.5, -12)
+        icon.BackgroundTransparency = 1
+        icon.Image = config.Icon
+    end
+    
+    btn.MouseButton1Click:Connect(function()
+        if config.Callback then
+            config.Callback()
+        end
+    end)
+    
+    return btn
+end
+
+-- トグル
+function KyoUI:CreateToggle(parent, config)
+    config = config or {}
+    
+    local frame = Instance.new("Frame")
+    frame.Parent = parent
+    frame.Size = UDim2.new(1, 0, 0, 35)
+    frame.BackgroundTransparency = 1
+    
+    local label = Instance.new("TextLabel")
+    label.Parent = frame
+    label.Size = UDim2.new(0.7, 0, 1, 0)
+    label.Position = UDim2.new(0, 0, 0, 0)
+    label.BackgroundTransparency = 1
+    label.Text = config.Name or "Toggle"
+    label.TextColor3 = Colors.Text
+    label.TextScaled = true
+    label.TextXAlignment = Enum.TextXAlignment.Left
+    label.Font = Enum.Font.Gotham
+    
+    local toggle = Instance.new("Frame")
+    toggle.Parent = frame
+    toggle.Size = UDim2.new(0, 50, 0, 28)
+    toggle.Position = UDim2.new(1, -55, 0.5, -14)
+    toggle.BackgroundColor3 = config.Default and Colors.Green or Colors.Red
+    toggle.BorderSizePixel = 0
+    CreateCorner(toggle, 14)
+    
+    local indicator = Instance.new("Frame")
+    indicator.Parent = toggle
+    indicator.Size = UDim2.new(0, 22, 0, 22)
+    indicator.Position = config.Default and UDim2.new(1, -26, 0.5, -11) or UDim2.new(0, 4, 0.5, -11)
+    indicator.BackgroundColor3 = Colors.Text
+    indicator.BorderSizePixel = 0
+    CreateCorner(indicator, 11)
+    
+    local state = config.Default or false
+    
+    local function UpdateToggle()
+        toggle.BackgroundColor3 = state and Colors.Green or Colors.Red
+        local pos = state and UDim2.new(1, -26, 0.5, -11) or UDim2.new(0, 4, 0.5, -11)
+        Tween(indicator, {Position = pos}, 0.25)
+    end
+    
+    local btn = Instance.new("TextButton")
+    btn.Parent = toggle
+    btn.Size = UDim2.new(1, 0, 1, 0)
+    btn.BackgroundTransparency = 1
+    btn.Text = ""
+    btn.BorderSizePixel = 0
+    
+    btn.MouseButton1Click:Connect(function()
+        state = not state
+        UpdateToggle()
+        if config.Callback then
+            config.Callback(state)
+        end
+    end)
+    
+    -- ホバーエフェクト
+    local hoverFrame = Instance.new("Frame")
+    hoverFrame.Parent = frame
+    hoverFrame.Size = UDim2.new(1, 0, 1, 0)
+    hoverFrame.BackgroundColor3 = Colors.Text
+    hoverFrame.BackgroundTransparency = 0.95
+    hoverFrame.BorderSizePixel = 0
+    CreateCorner(hoverFrame, 8)
+    hoverFrame.Visible = false
+    
+    frame.MouseEnter:Connect(function()
+        hoverFrame.Visible = true
+    end)
+    frame.MouseLeave:Connect(function()
+        hoverFrame.Visible = false
+    end)
+    
+    return frame
+end
+
+-- スライダー
+function KyoUI:CreateSlider(parent, config)
+    config = config or {}
+    
+    local frame = Instance.new("Frame")
+    frame.Parent = parent
+    frame.Size = UDim2.new(1, 0, 0, 55)
+    frame.BackgroundTransparency = 1
+    
+    local label = Instance.new("TextLabel")
+    label.Parent = frame
+    label.Size = UDim2.new(0.8, 0, 0, 20)
+    label.Position = UDim2.new(0, 0, 0, 0)
+    label.BackgroundTransparency = 1
+    label.Text = (config.Name or "Slider") .. ": " .. (config.Default or 0)
+    label.TextColor3 = Colors.Text
+    label.TextScaled = true
+    label.TextXAlignment = Enum.TextXAlignment.Left
+    label.Font = Enum.Font.Gotham
+    
+    local slider = Instance.new("Frame")
+    slider.Parent = frame
+    slider.Size = UDim2.new(1, 0, 0, 6)
+    slider.Position = UDim2.new(0, 0, 0, 28)
+    slider.BackgroundColor3 = Colors.Third
+    slider.BorderSizePixel = 0
+    CreateCorner(slider, 3)
+    
+    local fill = Instance.new("Frame")
+    fill.Parent = slider
+    fill.Size = UDim2.new(0, 0, 1, 0)
+    fill.BackgroundColor3 = Colors.Accent
+    fill.BorderSizePixel = 0
+    CreateCorner(fill, 3)
+    
+    local drag = Instance.new("Frame")
+    drag.Parent = slider
+    drag.Size = UDim2.new(0, 16, 0, 16)
+    drag.Position = UDim2.new(0, -8, 0.5, -8)
+    drag.BackgroundColor3 = Colors.Accent2
+    drag.BorderSizePixel = 0
+    CreateCorner(drag, 8)
+    
+    local min = config.Min or 0
+    local max = config.Max or 100
+    local value = config.Default or 50
+    local step = config.Increment or 1
+    
+    local function UpdateSlider(val)
+        val = math.clamp(val, min, max)
+        val = math.floor(val / step + 0.5) * step
+        value = val
+        local percent = (val - min) / (max - min)
+        fill.Size = UDim2.new(percent, 0, 1, 0)
+        drag.Position = UDim2.new(percent, -8, 0.5, -8)
+        label.Text = (config.Name or "Slider") .. ": " .. val
+        if config.Callback then
+            config.Callback(val)
+        end
+    end
+    
+    UpdateSlider(value)
+    
+    -- ドラッグ機能
+    local dragging = false
+    drag.MouseButton1Down:Connect(function()
+        dragging = true
+    end)
+    
+    UserInputService.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            dragging = false
+        end
+    end)
+    
+    UserInputService.InputChanged:Connect(function(input)
+        if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+            local pos = input.Position
+            local absPos = slider.AbsolutePosition
+            local size = slider.AbsoluteSize
+            local percent = math.clamp((pos.X - absPos.X) / size.X, 0, 1)
+            local val = min + (max - min) * percent
+            UpdateSlider(val)
+        end
+    end)
+    
+    return frame
+end
+
+-- ドロップダウン
+function KyoUI:CreateDropdown(parent, config)
+    config = config or {}
+    
+    local frame = Instance.new("Frame")
+    frame.Parent = parent
+    frame.Size = UDim2.new(1, 0, 0, 40)
+    frame.BackgroundTransparency = 1
+    
+    local label = Instance.new("TextLabel")
+    label.Parent = frame
+    label.Size = UDim2.new(0.35, 0, 1, 0)
+    label.Position = UDim2.new(0, 0, 0, 0)
+    label.BackgroundTransparency = 1
+    label.Text = config.Name or "Dropdown"
+    label.TextColor3 = Colors.Text
+    label.TextScaled = true
+    label.TextXAlignment = Enum.TextXAlignment.Left
+    label.Font = Enum.Font.Gotham
+    
+    local dropdown = Instance.new("TextButton")
+    dropdown.Parent = frame
+    dropdown.Size = UDim2.new(0.6, 0, 1, 0)
+    dropdown.Position = UDim2.new(0.4, 0, 0, 0)
+    dropdown.BackgroundColor3 = Colors.Third
+    dropdown.Text = config.Default or "Select"
+    dropdown.TextColor3 = Colors.Text
+    dropdown.TextScaled = true
+    dropdown.Font = Enum.Font.Gotham
+    dropdown.BorderSizePixel = 0
+    CreateCorner(dropdown, 6)
+    
+    local options = config.Options or {}
+    local selected = config.Default or options[1] or "None"
+    
+    -- ドロップダウンリスト
+    local list = Instance.new("ScrollingFrame")
+    list.Parent = frame
+    list.Size = UDim2.new(0.6, 0, 0, 100)
+    list.Position = UDim2.new(0.4, 0, 1, 0)
+    list.BackgroundColor3 = Colors.Second
+    list.BorderSizePixel = 0
+    list.Visible = false
+    list.ScrollBarThickness = 3
+    list.CanvasSize = UDim2.new(0, 0, 0, 0)
+    list.AutomaticCanvasSize = Enum.AutomaticSize.Y
+    CreateCorner(list, 6)
+    CreateStroke(list, Colors.Accent, 1)
+    
+    local listLayout = Instance.new("UIListLayout")
+    listLayout.Parent = list
+    listLayout.Padding = UDim.new(0, 2)
+    listLayout.SortOrder = Enum.SortOrder.LayoutOrder
+    
+    local function UpdateList()
+        -- 既存のアイテムを削除
+        for _, child in pairs(list:GetChildren()) do
+            if child:IsA("TextButton") then
+                child:Destroy()
+            end
+        end
+        
+        for _, opt in ipairs(options) do
+            local btn = Instance.new("TextButton")
+            btn.Parent = list
+            btn.Size = UDim2.new(1, 0, 0, 30)
+            btn.BackgroundColor3 = Colors.Third
+            btn.BackgroundTransparency = 0
+            btn.Text = opt
+            btn.TextColor3 = Colors.Text
+            btn.TextScaled = true
+            btn.Font = Enum.Font.Gotham
+            btn.BorderSizePixel = 0
+            
+            btn.MouseButton1Click:Connect(function()
+                selected = opt
+                dropdown.Text = opt
+                list.Visible = false
+                if config.Callback then
+                    config.Callback(opt)
+                end
+            end)
+        end
+    end
+    
+    UpdateList()
+    
+    dropdown.MouseButton1Click:Connect(function()
+        list.Visible = not list.Visible
+        if list.Visible then
+            list.Size = UDim2.new(0.6, 0, 0, math.min(#options * 32 + 10, 150))
+        end
+    end)
+    
+    return frame
+end
+
+-- テキストボックス
+function KyoUI:CreateTextbox(parent, config)
+    config = config or {}
+    
+    local frame = Instance.new("Frame")
+    frame.Parent = parent
+    frame.Size = UDim2.new(1, 0, 0, 40)
+    frame.BackgroundTransparency = 1
+    
+    local label = Instance.new("TextLabel")
+    label.Parent = frame
+    label.Size = UDim2.new(0.3, 0, 1, 0)
+    label.Position = UDim2.new(0, 0, 0, 0)
+    label.BackgroundTransparency = 1
+    label.Text = config.Name or "Input"
+    label.TextColor3 = Colors.Text
+    label.TextScaled = true
+    label.TextXAlignment = Enum.TextXAlignment.Left
+    label.Font = Enum.Font.Gotham
+    
+    local box = Instance.new("TextBox")
+    box.Parent = frame
+    box.Size = UDim2.new(0.65, 0, 1, 0)
+    box.Position = UDim2.new(0.35, 0, 0, 0)
+    box.BackgroundColor3 = Colors.Third
+    box.Text = config.Default or ""
+    box.TextColor3 = Colors.Text
+    box.TextScaled = true
+    box.Font = Enum.Font.Gotham
+    box.PlaceholderText = config.Placeholder or "Type here..."
+    box.BorderSizePixel = 0
+    CreateCorner(box, 6)
+    
+    box.FocusLost:Connect(function(enterPressed)
+        if config.Callback then
+            config.Callback(box.Text)
+        end
+    end)
+    
+    return frame
+end
+
+-- ラベル
+function KyoUI:CreateLabel(parent, config)
+    config = config or {}
+    
+    local label = Instance.new("TextLabel")
+    label.Parent = parent
+    label.Size = UDim2.new(1, 0, 0, 25)
+    label.BackgroundTransparency = 1
+    label.Text = config.Name or ""
+    label.TextColor3 = config.Color or Colors.TextDark
+    label.TextScaled = true
+    label.Font = Enum.Font.Gotham
+    label.TextXAlignment = config.Align or Enum.TextXAlignment.Center
+    
+    return label
+end
+
+-- パラグラフ
+function KyoUI:CreateParagraph(parent, config)
+    config = config or {}
+    
+    local frame = Instance.new("Frame")
+    frame.Parent = parent
+    frame.Size = UDim2.new(1, 0, 0, 60)
+    frame.BackgroundColor3 = Colors.Third
+    frame.BackgroundTransparency = 0.3
+    frame.BorderSizePixel = 0
+    CreateCorner(frame, 8)
+    CreateStroke(frame, Colors.Accent, 1)
+    
+    local label = Instance.new("TextLabel")
+    label.Parent = frame
+    label.Size = UDim2.new(1, -10, 1, -10)
+    label.Position = UDim2.new(0, 5, 0, 5)
+    label.BackgroundTransparency = 1
+    label.Text = config.Name or ""
+    label.TextColor3 = Colors.TextDark
+    label.TextScaled = true
+    label.Font = Enum.Font.Gotham
+    label.TextWrapped = true
+    label.TextXAlignment = Enum.TextXAlignment.Left
+    label.TextYAlignment = Enum.TextYAlignment.Top
+    
+    return frame
+end
+
+-- 通知
+function KyoUI:Notify(config)
+    config = config or {}
+    
+    local notification = Instance.new("Frame")
+    notification.Parent = self.ScreenGui or LP:WaitForChild("PlayerGui")
+    notification.Size = UDim2.new(0, 300, 0, 60)
+    notification.Position = UDim2.new(1, 20, 0, 20)
+    notification.BackgroundColor3 = Colors.Second
+    notification.BackgroundTransparency = 0.1
+    notification.BorderSizePixel = 0
+    CreateCorner(notification, 10)
+    CreateStroke(notification, Colors.Accent, 2)
+    
+    -- アニメーションで表示
+    notification.Position = UDim2.new(1, 20, 0, 20)
+    notification.BackgroundTransparency = 1
+    
+    local title = Instance.new("TextLabel")
+    title.Parent = notification
+    title.Size = UDim2.new(1, -10, 0.4, 0)
+    title.Position = UDim2.new(0, 5, 0, 2)
+    title.BackgroundTransparency = 1
+    title.Text = config.Name or "Notification"
+    title.TextColor3 = Colors.Accent
+    title.TextScaled = true
+    title.Font = Enum.Font.GothamBold
+    title.TextXAlignment = Enum.TextXAlignment.Left
+    
+    local content = Instance.new("TextLabel")
+    content.Parent = notification
+    content.Size = UDim2.new(1, -10, 0.5, 0)
+    content.Position = UDim2.new(0, 5, 0, 25)
+    content.BackgroundTransparency = 1
+    content.Text = config.Content or ""
+    content.TextColor3 = Colors.Text
+    content.TextScaled = true
+    content.Font = Enum.Font.Gotham
+    content.TextXAlignment = Enum.TextXAlignment.Left
+    
+    -- スライドイン
+    task.spawn(function()
+        notification.Position = UDim2.new(1, 20, 0, 20)
+        Tween(notification, {Position = UDim2.new(1, -320, 0, 20), BackgroundTransparency = 0.1}, 0.5)
+        
+        task.wait(config.Time or 3)
+        
+        Tween(notification, {Position = UDim2.new(1, 20, 0, 20), BackgroundTransparency = 1}, 0.5)
+        task.wait(0.5)
+        notification:Destroy()
+    end)
+end
+
+-- ============================================
+-- 破棄関数
+-- ============================================
+
+function KyoUI:Destroy()
+    if self.ScreenGui then
+        self.ScreenGui:Destroy()
+    end
+end
+
+-- ============================================
+-- グローバル公開
+-- ============================================
+
+return KyoUI
