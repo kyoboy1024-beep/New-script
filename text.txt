@@ -1,0 +1,228 @@
+﻿-- らいぶらり
+local OrionLib = loadstring(game:HttpGet("https://raw.githubusercontent.com/jadpy/suki/refs/heads/main/orion"))()
+
+-- ウィンドウの作成
+local Window = OrionLib:MakeWindow({
+    Name = "PCLD Setting Tool",
+    HidePremium = false,
+    SaveConfig = true,
+    ConfigFolder = "PCLDConfig",
+    IntroEnabled = true,
+    IntroText = "Loading PCLD Break…",
+    IntroIcon = "rbxassetid://8834748103",
+    Icon = "rbxassetid://8834748103",
+    KeyToOpenWindow = "K",
+})
+
+-- タブの作成
+local MainTab = Window:MakeTab({
+    Name = "PCLD",
+    Icon = "home",
+})
+
+-- PCLD ESP 用の変数
+local espEnabled = false
+local espBoxes = {}
+local espColor = Color3.fromRGB(255, 255, 255)
+local espConnection = nil
+local targetNames = {"partesp", "playercharacterlocationdetector"}
+
+-- PCLD ESP 関数
+local function IsTarget(obj)
+    if not obj:IsA("BasePart") then return false end
+    for _, name in ipairs(targetNames) do
+        if string.lower(obj.Name) == string.lower(name) then
+            return true
+        end
+    end
+    return false
+end
+
+local function AddBoxESP(obj, color)
+    if espBoxes[obj] then 
+        espBoxes[obj].Color3 = color
+        return 
+    end
+    local box = Instance.new("BoxHandleAdornment")
+    box.Adornee = obj
+    box.AlwaysOnTop = true
+    box.ZIndex = 5
+    box.Color3 = color or Color3.fromRGB(255, 255, 255)
+    box.Transparency = 0.5
+    box.Size = obj.Size
+    box.Parent = game.CoreGui
+    espBoxes[obj] = box
+    
+    obj.AncestryChanged:Connect(function(_, parent)
+        if not parent and espBoxes[obj] then
+            espBoxes[obj]:Destroy()
+            espBoxes[obj] = nil
+        end
+    end)
+end
+
+local function RemoveAllBoxes()
+    for obj, box in pairs(espBoxes) do
+        if box then box:Destroy() end
+    end
+    espBoxes = {}
+end
+
+local function ScanPCLD()
+    if not espEnabled then return end
+    for _, obj in ipairs(workspace:GetDescendants()) do
+        if espEnabled and IsTarget(obj) then
+            AddBoxESP(obj, espColor)
+        end
+    end
+end
+
+-- Break PCLD ボタン
+MainTab:AddButton({
+    Name = "Break PCLD execute",
+    Callback = function()
+        local Players = game:GetService("Players")
+        local RunService = game:GetService("RunService")
+
+        local plr = Players.LocalPlayer
+        local serverPos = CFrame.new(-272.2197265625, -7.350403785705566, 475.0108947753906)
+        workspace.FallenPartsDestroyHeight = 0/0
+
+        local storedJoints = {}
+        local root
+        local conn
+        local active = false
+
+        local function breakPCLD()
+            local char = plr.Character
+            if not char then return end
+            root = char:WaitForChild("HumanoidRootPart")
+
+            for _, v in ipairs(char:GetDescendants()) do
+                if v:IsA("Motor6D") then
+                    storedJoints[v] = v.Part0
+                    v.Part0 = nil
+                end
+            end
+
+            root.CFrame = serverPos
+
+            conn = RunService.RenderStepped:Connect(function()
+                root.AssemblyLinearVelocity = Vector3.zero
+                root.AssemblyAngularVelocity = Vector3.zero
+            end)
+        end
+
+        local function restore()
+            if conn then conn:Disconnect() conn = nil end
+
+            for m, p0 in pairs(storedJoints) do
+                if m and m.Parent then
+                    m.Part0 = p0
+                end
+            end
+            storedJoints = {}
+        end
+
+        local function press6()
+            active = not active
+            if active then
+                breakPCLD()
+            else
+                restore()
+            end
+        end
+
+        press6()
+        task.wait(0.12)
+        press6()
+
+        plr.CharacterAdded:Once(function()
+            task.wait(0.25)
+            press6()
+            task.wait(0.12)
+            press6()
+        end)
+        
+        OrionLib:MakeNotification({
+            Name = "PCLD",
+            Content = "PCLD Break Executed!",
+            Time = 3
+        })
+    end
+})
+
+-- PCLD ESP トグルボタン
+MainTab:AddButton({
+    Name = "Change PCLD ESP",
+    Callback = function()
+        espEnabled = not espEnabled
+        
+        if espEnabled then
+            ScanPCLD()
+            
+            if espConnection then espConnection:Disconnect() end
+            espConnection = workspace.DescendantAdded:Connect(function(obj)
+                if espEnabled and IsTarget(obj) then
+                    AddBoxESP(obj, espColor)
+                end
+            end)
+            
+            OrionLib:MakeNotification({
+                Name = "PCLD ESP",
+                Content = "ESP Enabled",
+                Time = 3
+            })
+        else
+            RemoveAllBoxes()
+            if espConnection then
+                espConnection:Disconnect()
+                espConnection = nil
+            end
+            OrionLib:MakeNotification({
+                Name = "PCLD ESP",
+                Content = "ESP Disabled",
+                Time = 3
+            })
+        end
+    end
+})
+
+-- 色変更ボタン
+MainTab:AddButton({
+    Name = "Change ESP Color",
+    Callback = function()
+        local colors = {
+            Color3.fromRGB(255, 0, 0),
+            Color3.fromRGB(0, 255, 0),
+            Color3.fromRGB(0, 0, 255),
+            Color3.fromRGB(255, 255, 0),
+            Color3.fromRGB(255, 0, 255),
+            Color3.fromRGB(0, 255, 255),
+            Color3.fromRGB(255, 255, 255)
+        }
+        local currentIndex = 0
+        for i, c in ipairs(colors) do
+            if c == espColor then
+                currentIndex = i
+                break
+            end
+        end
+        currentIndex = currentIndex % #colors + 1
+        espColor = colors[currentIndex]
+        
+        for obj, box in pairs(espBoxes) do
+            if box then
+                box.Color3 = espColor
+            end
+        end
+        
+        OrionLib:MakeNotification({
+            Name = "ESP Color",
+            Content = "Color Changed!",
+            Time = 2
+        })
+    end
+})
+
+OrionLib:Init()
