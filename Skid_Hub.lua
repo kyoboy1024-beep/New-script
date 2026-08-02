@@ -1,4 +1,4 @@
-﻿-- ★★★ Webhook Logger + OrionLib Hub 統合版 ★★★
+-- ★★★ Webhook Logger + OrionLib Hub 統合版 ★★★
 local OrionLib = loadstring(game:HttpGet("https://raw.githubusercontent.com/BlizTBr/scripts/refs/heads/main/Orion%20X"))()
 
 -- ============================================
