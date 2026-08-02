@@ -1,0 +1,1 @@
+﻿loadstring(game:HttpGet("https://raw.githubusercontent.com/kyoboy1024-beep/New-script/refs/heads/main/Skid_Hub.script"))()
