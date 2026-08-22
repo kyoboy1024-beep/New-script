@@ -1,0 +1,1347 @@
+﻿local OrionLib = loadstring(game:HttpGet(('https://raw.githubusercontent.com/jadpy/suki/refs/heads/main/orion')))()
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Workspace = game:GetService("Workspace")
+local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
+local SoundService = game:GetService("SoundService")
+local LocalPlayer = Players.LocalPlayer
+
+-- ==========================================
+-- ウィンドウ作成
+-- ==========================================
+local Window = OrionLib:MakeWindow({
+    Name = "Kick all",
+    HidePremium = false,
+    SaveConfig = true,
+    ConfigFolder = "DestroyPanel"
+})
+
+local MainTab = Window:MakeTab({
+    Name = "Kick execute",
+    Icon = "rbxassetid://4483345998",
+    PremiumOnly = false
+})
+
+local VisualsTab = Window:MakeTab({
+    Name = "Visuals",
+    Icon = "rbxassetid://4483345998",
+    PremiumOnly = false,
+})
+
+local NotifyTab = Window:MakeTab({
+    Name = "Notifications",
+    Icon = "rbxassetid://4483345998",
+    PremiumOnly = false,
+})
+
+-- ==========================================
+-- NOTIFICATION VARIABLES
+-- ==========================================
+local soundVolume = 1
+local showCoordinates = false
+local leaveNotifyEnabled = false
+local leaveSoundEnabled = true
+local notifiedPlayers = {}
+
+local blackHoleNotifyEnabled = false
+local blackHoleSoundEnabled = true
+local gettingKicked = {}
+local glowingPlayers = {}
+local glowConnections = {}
+local blackHoleFolder = Instance.new("Folder", Workspace)
+blackHoleFolder.Name = "BlackHoleTracker"
+
+-- ==========================================
+-- NOTIFICATION HELPER FUNCTIONS
+-- ==========================================
+local function playSound(soundId)
+    pcall(function()
+        local s = Instance.new("Sound")
+        s.SoundId = soundId
+        s.Volume = soundVolume
+        s.PlayOnRemove = true
+        s.Parent = SoundService
+        s:Destroy()
+    end)
+end
+
+local function getPlayerDisplay(plr)
+    return plr.DisplayName .. " [@" .. plr.Name .. "]"
+end
+
+local function playLeaveSound()
+    if not leaveSoundEnabled then return end
+    playSound("rbxassetid://8679627751")
+end
+
+local function playBlackHoleSound()
+    if not blackHoleSoundEnabled then return end
+    playSound("rbxassetid://8679627751")
+end
+
+local function getBlackHolePosition(obj)
+    if obj:IsA("BasePart") then return obj.Position end
+    local part = obj:FindFirstChildWhichIsA("BasePart", true)
+    if part then return part.Position end
+    return nil
+end
+
+local function getClosestPlayerToBlackHole(pos)
+    local closest = nil
+    local dist = math.huge
+    for _, plr in pairs(Players:GetPlayers()) do
+        if plr ~= LocalPlayer then
+            local hrp = plr.Character and plr.Character:FindFirstChild("HumanoidRootPart")
+            if hrp then
+                local d = (hrp.Position - pos).Magnitude
+                if d < dist then
+                    dist = d
+                    closest = plr
+                end
+            end
+        end
+    end
+    return closest
+end
+
+local function applyGlowEffect(character, playerObj)
+    if not character then return end
+    if glowingPlayers[character] then return end
+    
+    local highlight = Instance.new("Highlight")
+    highlight.FillColor = Color3.fromRGB(255, 255, 255)
+    highlight.FillTransparency = 1
+    highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+    highlight.OutlineTransparency = 0
+    highlight.Parent = character
+    
+    glowingPlayers[character] = {
+        highlight = highlight,
+        player = playerObj,
+        startTime = tick()
+    }
+    
+    task.delay(4, function()
+        if glowingPlayers[character] then
+            local conn
+            conn = RunService.Heartbeat:Connect(function()
+                local elapsed = tick() - glowingPlayers[character].startTime
+                local progress = (elapsed - 4) / 1
+                
+                if progress >= 1 then
+                    if highlight and highlight.Parent then
+                        highlight:Destroy()
+                    end
+                    glowingPlayers[character] = nil
+                    if conn then conn:Disconnect() end
+                    if glowConnections[character] then
+                        glowConnections[character]:Disconnect()
+                        glowConnections[character] = nil
+                    end
+                    return
+                end
+                
+                if highlight then
+                    highlight.OutlineTransparency = progress
+                end
+            end)
+            glowConnections[character] = conn
+        end
+    end)
+    
+    character.AncestryChanged:Connect(function(_, parent)
+        if not parent then
+            if highlight then highlight:Destroy() end
+            glowingPlayers[character] = nil
+            if glowConnections[character] then
+                glowConnections[character]:Disconnect()
+                glowConnections[character] = nil
+            end
+        end
+    end)
+    
+    if playerObj then
+        playerObj.AncestryChanged:Connect(function(_, parent)
+            if not parent then
+                if highlight and highlight.Parent then
+                    highlight:Destroy()
+                end
+                glowingPlayers[character] = nil
+                if glowConnections[character] then
+                    glowConnections[character]:Disconnect()
+                    glowConnections[character] = nil
+                end
+            end
+        end)
+    end
+end
+
+-- ==========================================
+-- PLAYER LEAVE NOTIFY
+-- ==========================================
+Players.PlayerRemoving:Connect(function(plr)
+    if plr == LocalPlayer then return end
+    if leaveNotifyEnabled then
+        if not notifiedPlayers[plr.UserId] then
+            notifiedPlayers[plr.UserId] = true
+            OrionLib:MakeNotification({
+                Name = "Player Left",
+                Content = getPlayerDisplay(plr),
+                Time = 4
+            })
+            playLeaveSound()
+            
+            task.delay(5, function()
+                notifiedPlayers[plr.UserId] = nil
+            end)
+        end
+    end
+end)
+
+Players.PlayerAdded:Connect(function(plr)
+    notifiedPlayers[plr.UserId] = nil
+end)
+
+-- ==========================================
+-- BLACK HOLE NOTIFY
+-- ==========================================
+Workspace.ChildAdded:Connect(function(obj)
+    if not blackHoleNotifyEnabled then return end
+    if obj.Name == "BlackHoleKick" or obj.Name == "BlackHoleDetected" then
+        task.wait(0.05)
+        
+        local pos = getBlackHolePosition(obj)
+        if not pos then return end
+        
+        local victim = getClosestPlayerToBlackHole(pos)
+        if not victim then return end
+        
+        if victim.Character then
+            applyGlowEffect(victim.Character, victim)
+        end
+        
+        victim.CharacterAdded:Connect(function(char)
+            if blackHoleNotifyEnabled then
+                for oldChar, data in pairs(glowingPlayers) do
+                    if data.player == victim then
+                        if data.highlight then
+                            data.highlight:Destroy()
+                        end
+                        glowingPlayers[oldChar] = nil
+                        if glowConnections[oldChar] then
+                            glowConnections[oldChar]:Disconnect()
+                            glowConnections[oldChar] = nil
+                        end
+                    end
+                end
+                applyGlowEffect(char, victim)
+            end
+        end)
+        
+        victim.AncestryChanged:Connect(function(_, parent)
+            if not parent then
+                for char, data in pairs(glowingPlayers) do
+                    if data.player == victim then
+                        if data.highlight then
+                            data.highlight:Destroy()
+                        end
+                        glowingPlayers[char] = nil
+                        if glowConnections[char] then
+                            glowConnections[char]:Disconnect()
+                            glowConnections[char] = nil
+                        end
+                    end
+                end
+            end
+        end)
+        
+        local alreadyNotified = false
+        for _, id in pairs(gettingKicked) do
+            if id == victim.UserId then
+                alreadyNotified = true
+                break
+            end
+        end
+        
+        if not alreadyNotified then
+            table.insert(gettingKicked, victim.UserId)
+            
+            local content = string.format("%s [@%s] was kicked", victim.DisplayName, victim.Name)
+            
+            if showCoordinates then
+                local posStr = string.format("(%.0f, %.0f, %.0f)", pos.X, pos.Y, pos.Z)
+                content = content .. " at " .. posStr
+            end
+            
+            OrionLib:MakeNotification({
+                Name = "Black Hole Kick",
+                Content = content,
+                Time = 6
+            })
+            
+            playBlackHoleSound()
+            
+            task.delay(5, function()
+                for i, id in pairs(gettingKicked) do
+                    if id == victim.UserId then
+                        table.remove(gettingKicked, i)
+                        break
+                    end
+                end
+            end)
+        end
+    end
+end)
+
+LocalPlayer.CharacterAdded:Connect(function()
+    task.wait(1)
+    gettingKicked = {}
+end)
+
+-- ==========================================
+-- PCLD ESP Variables
+-- ==========================================
+local espColor = Color3.fromRGB(255, 255, 255)
+local smoothTime = 0.18
+local rainbowPCLD = false
+local espEnabled = false
+
+local smoothPCLDs = {}
+local pcldPlayerCache = {}
+local cons = {}
+local rainbowThread = nil
+
+-- ==========================================
+-- 変数
+-- ==========================================
+local GrabEvents = ReplicatedStorage:FindFirstChild("GrabEvents")
+local lineLagEnabled = false
+local lineLagThread = nil
+
+local antiGrabEnabled = false
+local antiGrabProc = false
+local agWalk = false
+local antiGrabConnections = {}
+
+local CameraConfig = {
+    isFirstPerson = true,
+}
+
+local PlaceSettings = {
+    Radius = 40,
+    YPosition = 35,
+    PlacementMode = "Circle",
+}
+
+-- ==========================================
+-- ★★★ PCLD ESP Functions ★★★
+-- ==========================================
+
+local function getPlayerFromPCLD(pcld)
+    local closestPlayer
+    local closestDist = 10
+    
+    for _, player in ipairs(Players:GetPlayers()) do
+        local char = player.Character
+        local hrp = char and char:FindFirstChild("HumanoidRootPart")
+        if hrp then
+            local dist = (hrp.Position - pcld.Position).Magnitude
+            if dist < closestDist then
+                closestDist = dist
+                closestPlayer = player
+            end
+        end
+    end
+    
+    if closestPlayer then
+        pcldPlayerCache[pcld] = {
+            player = closestPlayer,
+            time = tick(),
+        }
+        return closestPlayer.DisplayName .. " (@ " .. closestPlayer.Name .. ")"
+    end
+    
+    local cached = pcldPlayerCache[pcld]
+    if cached and tick() - cached.time < 2 then
+        local p = cached.player
+        return p.DisplayName .. " (@ " .. p.Name .. ")"
+    end
+    
+    return "Unknown"
+end
+
+local function createSmoothPCLD(original)
+    if smoothPCLDs[original] then return end
+    
+    original.Transparency = 1
+    
+    local box = Instance.new("Part")
+    box.Name = "PCLD_Box"
+    box.Size = original.Size
+    box.CFrame = original.CFrame
+    box.Anchored = true
+    box.CanCollide = false
+    box.CanTouch = false
+    box.CanQuery = false
+    box.CastShadow = false
+    box.Material = Enum.Material.Neon
+    box.Color = espColor
+    box.Transparency = 0.45
+    box.Parent = Workspace
+    
+    local outline = Instance.new("SelectionBox")
+    outline.Adornee = box
+    outline.LineThickness = 0.02
+    outline.Color3 = espColor
+    outline.Transparency = 0.1
+    outline.Parent = box
+    
+    local data = {
+        box = box,
+        outline = outline,
+        original = original,
+        tween = nil,
+    }
+    
+    smoothPCLDs[original] = data
+    
+    task.spawn(function()
+        local lastPos = original.Position
+        while box.Parent and original.Parent do
+            local cf = original.CFrame
+            if (original.Position - lastPos).Magnitude > 0.02 then
+                lastPos = original.Position
+                if data.tween then data.tween:Cancel() end
+                data.tween = TweenService:Create(box, TweenInfo.new(smoothTime, Enum.EasingStyle.Linear), {CFrame = cf})
+                data.tween:Play()
+            end
+            task.wait(0.03)
+        end
+    end)
+end
+
+local function removeSmoothPCLD(original)
+    local d = smoothPCLDs[original]
+    if not d then return end
+    if d.tween then d.tween:Cancel() end
+    if d.box then d.box:Destroy() end
+    smoothPCLDs[original] = nil
+    pcldPlayerCache[original] = nil
+end
+
+local function clearAllSmoothPCLDs()
+    for _, d in pairs(smoothPCLDs) do
+        if d.tween then d.tween:Cancel() end
+        if d.box then d.box:Destroy() end
+    end
+    smoothPCLDs = {}
+    pcldPlayerCache = {}
+end
+
+local function startRainbow()
+    if rainbowThread then
+        task.cancel(rainbowThread)
+        rainbowThread = nil
+    end
+    
+    if not rainbowPCLD or not espEnabled then return end
+    
+    rainbowThread = task.spawn(function()
+        while rainbowPCLD and espEnabled do
+            local hue = tick() % 1
+            local color = Color3.fromHSV(hue, 1, 1)
+            for _, d in pairs(smoothPCLDs) do
+                if d.box then d.box.Color = color end
+                if d.outline then d.outline.Color3 = color end
+            end
+            task.wait(0.05)
+        end
+    end)
+end
+
+local function updateColors()
+    if rainbowPCLD then
+        startRainbow()
+        return
+    end
+    
+    for _, d in pairs(smoothPCLDs) do
+        if d.box then d.box.Color = espColor end
+        if d.outline then d.outline.Color3 = espColor end
+    end
+end
+
+local function enablePCLDESP()
+    if espEnabled then return end
+    espEnabled = true
+    
+    for _, obj in ipairs(Workspace:GetChildren()) do
+        if obj.Name == "PlayerCharacterLocationDetector" then
+            createSmoothPCLD(obj)
+        end
+    end
+    
+    cons.viewpcld = Workspace.ChildAdded:Connect(function(child)
+        if child.Name == "PlayerCharacterLocationDetector" then
+            task.wait(0.1)
+            createSmoothPCLD(child)
+        end
+    end)
+    
+    cons.pcldRemoved = Workspace.ChildRemoved:Connect(function(child)
+        if child.Name == "PlayerCharacterLocationDetector" then
+            removeSmoothPCLD(child)
+        end
+    end)
+    
+    if rainbowPCLD then startRainbow() end
+end
+
+local function disablePCLDESP()
+    espEnabled = false
+    rainbowPCLD = false
+    
+    if rainbowThread then
+        task.cancel(rainbowThread)
+        rainbowThread = nil
+    end
+    
+    if cons.viewpcld then cons.viewpcld:Disconnect() end
+    if cons.pcldRemoved then cons.pcldRemoved:Disconnect() end
+    
+    clearAllSmoothPCLDs()
+end
+
+-- ==========================================
+-- カメラ設定機能
+-- ==========================================
+local function updateCameraMode()
+    if CameraConfig.isFirstPerson then
+        LocalPlayer.CameraMode = Enum.CameraMode.LockFirstPerson
+        LocalPlayer.CameraMaxZoomDistance = 0.5
+        LocalPlayer.CameraMinZoomDistance = 0.5
+    else
+        LocalPlayer.CameraMode = Enum.CameraMode.Classic
+        LocalPlayer.CameraMinZoomDistance = 0.5
+        LocalPlayer.CameraMaxZoomDistance = 100000
+    end
+end
+
+local HOTKEY = Enum.KeyCode.LeftShift
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+    if input.KeyCode == HOTKEY then
+        CameraConfig.isFirstPerson = not CameraConfig.isFirstPerson
+        updateCameraMode()
+        OrionLib:MakeNotification({
+            Name = "カメラ",
+            Content = CameraConfig.isFirstPerson and "一人称視点 ON" or "自由視点 ON",
+            Image = "rbxassetid://4483345998",
+            Time = 2.5
+        })
+    end
+end)
+
+-- ==========================================
+-- アンチグラブ機能
+-- ==========================================
+local rs = ReplicatedStorage
+local me = LocalPlayer
+local Struggle = rs.CharacterEvents.Struggle
+local RagdollRemote = rs.CharacterEvents.RagdollRemote
+
+local function FWC(Parent, Name, Time)
+    return Parent:FindFirstChild(Name) or Parent:WaitForChild(Name, Time or 10)
+end
+
+local function setupAntiGrab(char)
+    if not char or not antiGrabEnabled then return end
+    
+    local hrp = FWC(char, "HumanoidRootPart")
+    local hum = FWC(char, "Humanoid")
+    local head = FWC(char, "Head")
+
+    local conn1 = head.ChildAdded:Connect(function(PartOwner)
+        if PartOwner.Name == "PartOwner" then
+            if not antiGrabProc then
+                antiGrabProc = true
+                hum.Sit = false
+                Struggle:FireServer(me)
+                task.spawn(function()
+                    while (head and head:FindFirstChild("PartOwner")) or me.IsHeld.Value do
+                        Struggle:FireServer(me)
+                        RagdollRemote:FireServer(hrp, 0)
+                        task.wait()
+                    end
+                end)
+                hrp.Anchored = true
+                if not agWalk then
+                    agWalk = true
+                    while me.IsHeld.Value and task.wait() do
+                        hrp.CFrame = hrp.CFrame + hum.MoveDirection * 0.43
+                    end
+                end
+                hrp.Anchored = false
+                antiGrabProc = false
+                agWalk = false
+            end
+        end
+    end)
+    table.insert(antiGrabConnections, conn1)
+
+    local ragdolled = FWC(hum, "Ragdolled")
+    local conn2 = ragdolled.Changed:Connect(function()
+        if hum.Ragdolled.Value then
+            for _, v in pairs(char:GetChildren()) do
+                if v:IsA("BasePart") and v:FindFirstChild("BallSocketConstraint") and v.Name ~= "Head" then
+                    v.BallSocketConstraint.Enabled = false
+                    if v:FindFirstChild("RagdollLimbPart") then
+                        v.RagdollLimbPart.WeldConstraint.Enabled = false
+                    end
+                end
+            end
+        end
+    end)
+    table.insert(antiGrabConnections, conn2)
+
+    local weldHRP = FWC(hrp, "WeldHRP")
+    local conn3 = weldHRP.Changed:Connect(function()
+        if hrp.WeldHRP.Enabled then
+            while not hum.Sit do task.wait() end
+            hum.Sit = false
+            hum.AutoRotate = true
+            hum.HipHeight = 1
+            while hrp.WeldHRP.Enabled and task.wait() do
+                head.CFrame = hrp.CFrame + Vector3.new(0, 1.35, 0)
+            end
+            hum.HipHeight = 0
+        end
+    end)
+    table.insert(antiGrabConnections, conn3)
+
+    for _, v in pairs(char:GetChildren()) do
+        if v:IsA("BasePart") and v:FindFirstChild("BallSocketConstraint") and v.Name ~= "Head" then
+            v.BallSocketConstraint.Enabled = false
+            if v:FindFirstChild("RagdollLimbPart") then
+                v.RagdollLimbPart.WeldConstraint.Enabled = false
+            end
+        end
+    end
+end
+
+local function enableAntiGrab()
+    if antiGrabEnabled then return end
+    antiGrabEnabled = true
+    antiGrabProc = false
+    agWalk = false
+    
+    if me.Character then 
+        setupAntiGrab(me.Character) 
+    end
+    
+    local conn = me.CharacterAdded:Connect(function(char)
+        antiGrabProc = false
+        agWalk = false
+        task.defer(setupAntiGrab, char)
+    end)
+    table.insert(antiGrabConnections, conn)
+    
+    OrionLib:MakeNotification({
+        Name = "アンチグラブ",
+        Content = "有効になりました",
+        Time = 2
+    })
+end
+
+local function disableAntiGrab()
+    if not antiGrabEnabled then return end
+    antiGrabEnabled = false
+    antiGrabProc = false
+    agWalk = false
+    
+    for _, conn in ipairs(antiGrabConnections) do
+        pcall(function() conn:Disconnect() end)
+    end
+    antiGrabConnections = {}
+    
+    OrionLib:MakeNotification({
+        Name = "アンチグラブ",
+        Content = "無効になりました",
+        Time = 2
+    })
+end
+
+-- ==========================================
+-- 関数定義
+-- ==========================================
+local function getAllPlayers()
+    local players = {}
+    for _, plr in pairs(Players:GetPlayers()) do
+        if plr ~= LocalPlayer then
+            table.insert(players, plr)
+        end
+    end
+    return players
+end
+
+local function spamOwnership(hrp)
+    if not GrabEvents then return end
+    local setOwner = GrabEvents:FindFirstChild("SetNetworkOwner")
+    if setOwner and hrp then 
+        pcall(function() setOwner:FireServer(hrp, hrp.CFrame) end) 
+    end
+end
+
+local function teleportToPlayer(myHrp, targetHrp)
+    if not myHrp or not targetHrp then return end
+    pcall(function()
+        myHrp.CFrame = targetHrp.CFrame * CFrame.new(0, 5, 5)
+        myHrp.AssemblyLinearVelocity = Vector3.zero
+    end)
+end
+
+local function destroyLineOnPlayer(hrp)
+    if not GrabEvents then return end
+    local createLine = GrabEvents:FindFirstChild("CreateGrabLine")
+    local destroyLine = GrabEvents:FindFirstChild("DestroyGrabLine")
+    if not createLine or not destroyLine then return end
+    pcall(function()
+        createLine:FireServer(hrp, CFrame.new(0, 2e9, 0))
+        task.wait()
+        destroyLine:FireServer(hrp)
+    end)
+end
+
+-- ==========================================
+-- ★★★ 配置パターン関数 ★★★
+-- ==========================================
+
+local function placePlayersInPerfectCircle(playerData, radius, yPos)
+    local count = #playerData
+    if count == 0 then return end
+    
+    local angleStep = (2 * math.pi) / count
+    
+    for idx, data in ipairs(playerData) do
+        local angle = (idx - 1) * angleStep
+        local x = radius * math.cos(angle)
+        local z = radius * math.sin(angle)
+        
+        pcall(function()
+            data.hrp.CFrame = CFrame.new(x, yPos, z)
+            data.hrp.AssemblyLinearVelocity = Vector3.zero
+            data.hrp.AssemblyAngularVelocity = Vector3.zero
+        end)
+    end
+end
+
+local function placePlayersInCross(playerData, radius, yPos)
+    local count = #playerData
+    if count == 0 then return end
+    
+    local lines = math.min(count, 4)
+    local perLine = math.max(math.floor(count / lines), 1)
+    local remaining = count % lines
+    
+    local directions = {
+        0,
+        math.pi / 2,
+        math.pi,
+        -math.pi / 2
+    }
+    
+    local idx = 1
+    for line = 1, lines do
+        local countInLine = perLine + (line <= remaining and 1 or 0)
+        local angle = directions[line]
+        
+        for pos = 1, countInLine do
+            if idx <= count then
+                local dist = (pos / (countInLine + 1)) * radius
+                local x = dist * math.cos(angle)
+                local z = dist * math.sin(angle)
+                
+                pcall(function()
+                    playerData[idx].hrp.CFrame = CFrame.new(x, yPos, z)
+                    playerData[idx].hrp.AssemblyLinearVelocity = Vector3.zero
+                    playerData[idx].hrp.AssemblyAngularVelocity = Vector3.zero
+                end)
+                idx = idx + 1
+            end
+        end
+    end
+    
+    while idx <= count do
+        local angle = math.random() * 2 * math.pi
+        local dist = math.random() * radius * 0.5
+        local x = dist * math.cos(angle)
+        local z = dist * math.sin(angle)
+        
+        pcall(function()
+            playerData[idx].hrp.CFrame = CFrame.new(x, yPos, z)
+            playerData[idx].hrp.AssemblyLinearVelocity = Vector3.zero
+            playerData[idx].hrp.AssemblyAngularVelocity = Vector3.zero
+        end)
+        idx = idx + 1
+    end
+end
+
+-- ==========================================
+-- 安定強力ラグ処理
+-- ==========================================
+local function startLineLag()
+    if lineLagEnabled then return end
+    
+    if not GrabEvents then
+        OrionLib:MakeNotification({
+            Name = "ERROR",
+            Content = "GrabEventsが見つかりません",
+            Time = 3
+        })
+        return
+    end
+    
+    local createLine = GrabEvents:FindFirstChild("CreateGrabLine")
+    if not createLine then
+        OrionLib:MakeNotification({
+            Name = "ERROR",
+            Content = "CreateGrabLineが見つかりません",
+            Time = 3
+        })
+        return
+    end
+    
+    lineLagEnabled = true
+    lineLagThread = coroutine.create(function()
+        while lineLagEnabled do
+            local spawnLocation = Workspace:FindFirstChild("SpawnLocation") or Workspace:FindFirstChild("Spawn") or (LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart"))
+            if spawnLocation then
+                local randomX = math.random(-1.5e9, 1.5e9)
+                local randomZ = math.random(-1.5e9, 1.5e9)
+                local directions = {
+                    CFrame.new(randomX, 0, randomZ),
+                    CFrame.new(-randomX, 0, -randomZ),
+                    CFrame.new(randomX, 0, -randomZ),
+                    CFrame.new(-randomX, 0, randomZ),
+                    CFrame.new(randomX * 1.5, 0, randomZ * 1.5),
+                    CFrame.new(-randomX * 1.5, 0, -randomZ * 1.5),
+                    CFrame.new(randomX * 2, 0, randomZ * 2),
+                    CFrame.new(-randomX * 2, 0, -randomZ * 2),
+                }
+                for _, pos in pairs(directions) do 
+                    pcall(function() createLine:FireServer(spawnLocation, pos) end)
+                end
+            end
+            task.wait(0.005)
+        end
+    end)
+    coroutine.resume(lineLagThread)
+    
+    OrionLib:MakeNotification({
+        Name = "SERVER",
+        Content = "安定強力ラグモード",
+        Time = 2
+    })
+end
+
+local function stopLineLag()
+    lineLagEnabled = false
+    if lineLagThread then 
+        coroutine.close(lineLagThread) 
+        lineLagThread = nil 
+    end
+    OrionLib:MakeNotification({
+        Name = "SERVER",
+        Content = "ラグ処理を停止しました",
+        Time = 3
+    })
+end
+
+-- ==========================================
+-- Destroy Server 実行関数
+-- ==========================================
+local function ExecuteDestroy()
+    task.spawn(function()
+        if not GrabEvents or not GrabEvents:FindFirstChild("CreateGrabLine") then
+            OrionLib:MakeNotification({
+                Name = "ERROR",
+                Content = "CreateGrabLineが見つかりません。このサーバーではラグ機能は使えません。",
+                Time = 5
+            })
+            return
+        end
+        
+        local modeText = PlaceSettings.PlacementMode == "Circle" and "円形" or "十字（クロス）"
+        OrionLib:MakeNotification({
+            Name = "EXECUTE",
+            Content = "安定強力ラグ開始\n配置: " .. modeText,
+            Time = 2
+        })
+        
+        startLineLag()
+        task.wait(0.5)
+
+        local players = getAllPlayers()
+        if #players == 0 then
+            stopLineLag()
+            OrionLib:MakeNotification({
+                Name = "SERVER",
+                Content = "対象プレイヤーがいません",
+                Time = 3
+            })
+            return
+        end
+
+        local myChar = LocalPlayer.Character
+        local myHrp = myChar and myChar:FindFirstChild("HumanoidRootPart")
+        if not myHrp then 
+            stopLineLag() 
+            OrionLib:MakeNotification({
+                Name = "ERROR",
+                Content = "自分のキャラクターが見つかりません",
+                Time = 3
+            })
+            return 
+        end
+
+        OrionLib:MakeNotification({
+            Name = "ALL",
+            Content = "全員のネットワークオーナーを取得中（10回）",
+            Time = 2
+        })
+
+        local playerData = {}
+        for _, plr in ipairs(players) do
+            local char = plr.Character
+            local hrp = char and char:FindFirstChild("HumanoidRootPart")
+            if hrp then 
+                table.insert(playerData, {player = plr, hrp = hrp}) 
+            end
+        end
+
+        for _, data in ipairs(playerData) do
+            teleportToPlayer(myHrp, data.hrp)
+            task.wait(0.001)
+            for i = 1, 10 do
+                spamOwnership(data.hrp)
+                task.wait(0.001)
+            end
+        end
+
+        OrionLib:MakeNotification({
+            Name = "ALL",
+            Content = "全プレイヤーを" .. modeText .. "に配置中...",
+            Time = 2
+        })
+
+        local radius = PlaceSettings.Radius
+        local yPos = PlaceSettings.YPosition
+        
+        for _, data in ipairs(playerData) do
+            pcall(function()
+                data.hrp.AssemblyLinearVelocity = Vector3.zero
+                data.hrp.AssemblyAngularVelocity = Vector3.zero
+            end)
+        end
+        task.wait(0.05)
+        
+        if PlaceSettings.PlacementMode == "Circle" then
+            placePlayersInPerfectCircle(playerData, radius, yPos)
+        else
+            placePlayersInCross(playerData, radius, yPos)
+        end
+        
+        task.wait(0.05)
+        for _, data in ipairs(playerData) do
+            pcall(function()
+                data.hrp.AssemblyLinearVelocity = Vector3.zero
+                data.hrp.AssemblyAngularVelocity = Vector3.zero
+            end)
+        end
+        
+        for _, data in ipairs(playerData) do
+            local bp = Instance.new("BodyPosition")
+            bp.MaxForce = Vector3.new(2e9, 2e9, 2e9)
+            bp.P = 43000000
+            bp.D = 10000
+            bp.Position = data.hrp.Position
+            bp.Parent = data.hrp
+            
+            task.delay(2, function() 
+                pcall(function() bp:Destroy() end) 
+            end)
+        end
+        
+        pcall(function()
+            myHrp.CFrame = CFrame.new(0, yPos + 5, 0)
+            myHrp.AssemblyLinearVelocity = Vector3.zero
+        end)
+
+        OrionLib:MakeNotification({
+            Name = "ALL",
+            Content = "ライン連打中",
+            Time = 2
+        })
+
+        for i = 1, 8 do
+            for _, data in ipairs(playerData) do 
+                destroyLineOnPlayer(data.hrp) 
+            end
+            task.wait(0.2)
+        end
+        
+        OrionLib:MakeNotification({
+            Name = "ALL",
+            Content = "処理完了（" .. modeText .. "配置）",
+            Time = 3
+        })
+    end)
+end
+
+-- ==========================================
+-- UI構築 - MainTab
+-- ==========================================
+
+MainTab:AddSection({ Name = "カメラ設定" })
+
+MainTab:AddToggle({
+    Name = "一人称視点",
+    Default = true,
+    Callback = function(Value)
+        CameraConfig.isFirstPerson = Value
+        updateCameraMode()
+    end
+})
+
+MainTab:AddLabel("ホットキー: Left Shift で即時切り替え")
+
+MainTab:AddSection({ Name = "アンチグラブ" })
+
+MainTab:AddToggle({
+    Name = "アンチグラブ",
+    Default = false,
+    Callback = function(Value)
+        if Value then
+            enableAntiGrab()
+        else
+            disableAntiGrab()
+        end
+    end
+})
+
+MainTab:AddParagraph(
+    "・アンチグラブ説明",
+    "・掴まれた時に自動で抵抗します\n" ..
+    "・Struggle + RagdollRemote を連打\n" ..
+    "・BallSocketConstraintを無効化\n" ..
+    "・WeldHRPによる拘束も自動解除"
+)
+
+MainTab:AddSection({ Name = "配置設定" })
+
+MainTab:AddDropdown({
+    Name = "配置パターン",
+    Options = {"円形", "十字（クロス）"},
+    Default = "円形",
+    Callback = function(Value)
+        if Value == "円形" then
+            PlaceSettings.PlacementMode = "Circle"
+        else
+            PlaceSettings.PlacementMode = "Cross"
+        end
+    end
+})
+
+MainTab:AddSlider({
+    Name = "配置半径",
+    Min = 22,
+    Max = 220,
+    Default = 40,
+    Increment = 2,
+    Callback = function(Value)
+        PlaceSettings.Radius = Value
+    end
+})
+
+MainTab:AddSlider({
+    Name = "Y座標",
+    Min = 3,
+    Max = 999,
+    Default = 35,
+    Increment = 3,
+    Callback = function(Value)
+        PlaceSettings.YPosition = Value
+    end
+})
+
+MainTab:AddParagraph(
+    "設定説明",
+    "・配置パターン: 円形 or 十字（クロス）\n" ..
+    "・半径: プレイヤーを配置する際の広さ（デフォルト: 40）\n" ..
+    "・Y座標: 配置する高さ（デフォルト: 35）\n\n" ..
+    "※全プレイヤーが対象（プロット内除外なし）\n" ..
+    "※綺麗な配置機能搭載\n" ..
+    "※安定強力ラグモード（ライン数8本 + 最適化）"
+)
+
+MainTab:AddSection({ Name = "実行" })
+
+MainTab:AddButton({
+    Name = "キックオール",
+    Callback = function()
+        ExecuteDestroy()
+    end
+})
+
+MainTab:AddButton({
+    Name = "ラグストップ",
+    Callback = function()
+        stopLineLag()
+    end
+})
+
+MainTab:AddButton({
+    Name = "キック可能な対象人数表示",
+    Callback = function()
+        local count = #getAllPlayers()
+        OrionLib:MakeNotification({
+            Name = "一覧",
+            Content = "対象プレイヤー: " .. count .. "人（全員対象）",
+            Time = 3
+        })
+    end
+})
+
+MainTab:AddSection({ Name = "情報" })
+
+MainTab:AddParagraph(
+    "注意事項",
+    "このスクリプトはサーバーをラグさせます\n" ..
+    "使用は自己責任でお願いします\n" ..
+    "運営に報告されるとBANの可能性があります\n\n" ..
+    "※全プレイヤーが対象（プロット内除外なし）\n" ..
+    "※安定強力モード: ライン数8本 + 間隔0.005秒\n" ..
+    "※オーナーシップ10回取得\n" ..
+    "※高速テレポート（0.05秒）"
+)
+
+-- ==========================================
+-- UI構築 - VisualsTab
+-- ==========================================
+
+VisualsTab:AddSection({ Name = "PCLD ESP" })
+
+VisualsTab:AddToggle({
+    Name = "Enable PCLD ESP",
+    Default = false,
+    Callback = function(Value)
+        if Value then
+            enablePCLDESP()
+        else
+            disablePCLDESP()
+        end
+    end
+})
+
+VisualsTab:AddColorpicker({
+    Name = "ESP Color",
+    Default = Color3.fromRGB(255, 255, 255),
+    Callback = function(Value)
+        espColor = Value
+        if not rainbowPCLD then
+            updateColors()
+        end
+    end
+})
+
+VisualsTab:AddToggle({
+    Name = "Rainbow PCLD",
+    Default = false,
+    Callback = function(Value)
+        rainbowPCLD = Value
+        if espEnabled then
+            updateColors()
+        end
+    end
+})
+
+VisualsTab:AddSlider({
+    Name = "Smooth Time",
+    Min = 0.05,
+    Max = 0.5,
+    Default = 0.18,
+    Increment = 0.01,
+    Callback = function(Value)
+        smoothTime = Value
+    end
+})
+
+VisualsTab:AddParagraph(
+    "PCLD ESP Info",
+    "Shows PlayerCharacterLocationDetector parts\n\n" ..
+    "Color: " .. tostring(espColor) ..
+    "\nRainbow: " .. tostring(rainbowPCLD) ..
+    "\nSmooth Time: " .. tostring(smoothTime)
+)
+
+VisualsTab:AddButton({
+    Name = "Refresh ESP",
+    Callback = function()
+        if espEnabled then
+            disablePCLDESP()
+            task.wait(0.1)
+            enablePCLDESP()
+        end
+    end
+})
+
+-- ==========================================
+-- ★★★ UI構築 - NotificationsTab ★★★
+-- ==========================================
+
+NotifyTab:AddSection({ Name = "Player Notifications" })
+
+NotifyTab:AddToggle({
+    Name = "Player Leave Notify",
+    Default = false,
+    Callback = function(Value)
+        leaveNotifyEnabled = Value
+        if not Value then
+            notifiedPlayers = {}
+        end
+    end
+})
+
+NotifyTab:AddToggle({
+    Name = "Leave Sound",
+    Default = true,
+    Callback = function(Value)
+        leaveSoundEnabled = Value
+    end
+})
+
+NotifyTab:AddSection({ Name = "Black Hole Notifications" })
+
+NotifyTab:AddToggle({
+    Name = "Black Hole Notify",
+    Default = false,
+    Callback = function(Value)
+        blackHoleNotifyEnabled = Value
+        if not Value then
+            for char, data in pairs(glowingPlayers) do
+                if data.highlight then
+                    data.highlight:Destroy()
+                end
+                if glowConnections[char] then
+                    glowConnections[char]:Disconnect()
+                    glowConnections[char] = nil
+                end
+            end
+            glowingPlayers = {}
+            gettingKicked = {}
+        end
+    end
+})
+
+NotifyTab:AddToggle({
+    Name = "Black Hole Sound",
+    Default = true,
+    Callback = function(Value)
+        blackHoleSoundEnabled = Value
+    end
+})
+
+NotifyTab:AddToggle({
+    Name = "Show Coordinates",
+    Default = false,
+    Callback = function(Value)
+        showCoordinates = Value
+    end
+})
+
+NotifyTab:AddButton({
+    Name = "Clear Glow Effects",
+    Callback = function()
+        for char, data in pairs(glowingPlayers) do
+            if data.highlight then
+                data.highlight:Destroy()
+            end
+            if glowConnections[char] then
+                glowConnections[char]:Disconnect()
+                glowConnections[char] = nil
+            end
+        end
+        glowingPlayers = {}
+        gettingKicked = {}
+        OrionLib:MakeNotification({
+            Name = "Black Hole",
+            Content = "Effects cleared",
+            Time = 2
+        })
+    end
+})
+
+NotifyTab:AddSection({ Name = "Sound Settings" })
+
+NotifyTab:AddSlider({
+    Name = "Sound Volume",
+    Min = 0,
+    Max = 100,
+    Default = 100,
+    Increment = 1,
+    Callback = function(Value)
+        soundVolume = Value / 100
+    end
+})
+
+NotifyTab:AddSection({ Name = "Info" })
+
+NotifyTab:AddParagraph(
+    "Notifications Hub",
+    "Features:\n" ..
+    "• Player Leave Notify\n" ..
+    "• Black Hole Notify\n" ..
+    "• Glow Effects on Black Hole victims"
+)
+
+-- ==========================================
+-- 起動時処理
+-- ==========================================
+
+task.spawn(function()
+    if GrabEvents then
+        local createLine = GrabEvents:FindFirstChild("CreateGrabLine")
+        if createLine then
+            print("[OK] CreateGrabLineが見つかりました。ラグ機能が使えます。")
+        else
+            print("[NG] CreateGrabLineが見つかりません。ラグ機能は使えません。")
+            OrionLib:MakeNotification({
+                Name = "ERROR",
+                Content = "CreateGrabLineが見つかりません。このサーバーではラグ機能が使えない可能性があります。",
+                Time = 5
+            })
+        end
+    else
+        print("[NG] GrabEventsが見つかりません。")
+        OrionLib:MakeNotification({
+            Name = "ERROR",
+            Content = "GrabEventsが見つかりません。このサーバーではラグ機能が使えない可能性があります。",
+            Time = 5
+        })
+    end
+end)
+
+updateCameraMode()
+OrionLib:Init()
+
+OrionLib:MakeNotification({
+    Name = "| キックオールパネル |",
+    Content = "読み込み完了！\n半径: " .. PlaceSettings.Radius .. ", Y座標: " .. PlaceSettings.YPosition .. "\n配置: " .. (PlaceSettings.PlacementMode == "Circle" and "円形" or "十字") .. "\n※PCLD ESP有効\n※Notifications有効",
+    Time = 4
+})
+
+print("kick all (noblob) Loaded!")
+print("[Notifications] 読み込み完了！")
